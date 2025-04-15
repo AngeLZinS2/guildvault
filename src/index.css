@@ -1,0 +1,107 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 25% 10%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 20% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 20% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 198 78% 49%; /* Alterado para azul */
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 20 100% 60%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 223 15% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 222 20% 16%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 223 15% 17%;
+    --input: 223 15% 17%;
+    --ring: 198 78% 49%; /* Alterado para azul */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-guild-dark text-white;
+    background-image: linear-gradient(to bottom, rgba(18, 20, 32, 0.95), rgba(26, 28, 41, 0.9)), url('/los-santos-skyline.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .guild-card {
+    @apply relative bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/20 rounded-lg shadow-lg overflow-hidden animate-pulse-glow;
+  }
+  
+  .guild-input {
+    @apply bg-guild-dark/70 border-guild-primary/30 text-white placeholder:text-gray-400 focus:border-guild-primary hover:border-guild-primary/60 transition-colors;
+  }
+  
+  .guild-button-primary {
+    @apply bg-guild-primary hover:bg-guild-primary/80 text-white;
+  }
+  
+  .guild-button-secondary {
+    @apply bg-guild-secondary hover:bg-guild-secondary/80 text-white;
+  }
+  
+  .guild-button-ghost {
+    @apply bg-transparent hover:bg-white/10 text-white border border-white/20;
+  }
+
+  .glow-border {
+    box-shadow: 0 0 5px 0px theme('colors.guild.primary');
+  }
+}
+
+/* YouTube player styling */
+#youtube-player {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+#youtube-player iframe {
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  transform: scale(1.2);
+}
+
+@media (min-aspect-ratio: 16/9) {
+  #youtube-player iframe {
+    height: 56.25vw; /* 16:9 */
+  }
+}
+
+@media (max-aspect-ratio: 16/9) {
+  #youtube-player iframe {
+    width: 177.78vh; /* 16:9 */
+  }
+}
