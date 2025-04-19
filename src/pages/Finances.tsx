@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,15 +33,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Transaction, PaymentSchedule, MonthlyData } from "src/services/financeService.ts";
+import { addFinanceRecord, fetchFinances, updateFinanceVerification, fetchPaymentSchedule, addPaymentSchedule, deletePaymentSchedule, updatePaymentSchedule } from "@/services/financeService";
+import { fetchMembers } from "@/services/memberService";
+import { MemberData } from "@/types";
 
 export default function Finances() {
-  // Estado para gerenciar as transações
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  // Estado para gerenciar os pagamentos programados
-  const [paymentSchedule, setPaymentSchedule] = useState<PaymentSchedule[]>([]);
-  // Estado para gerenciar os dados mensais
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([
+  const [transactions, setTransactions] = useState([]);
+  const [paymentSchedule, setPaymentSchedule] = useState([]);
+  const [monthlyData, setMonthlyData] = useState([
     { month: "Jan", income: 0, expenses: 0 },
     { month: "Fev", income: 0, expenses: 0 },
     { month: "Mar", income: 0, expenses: 0 },
@@ -49,7 +48,7 @@ export default function Finances() {
     { month: "Mai", income: 0, expenses: 0 },
     { month: "Jun", income: 0, expenses: 0 },
   ]);
-
+  const [members, setMembers] = useState<MemberData[]>([]);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [isAddDepositOpen, setIsAddDepositOpen] = useState(false);
@@ -58,7 +57,6 @@ export default function Finances() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
-  // Form states
   const [depositForm, setDepositForm] = useState({
     amount: "",
     member: "",
@@ -81,7 +79,26 @@ export default function Finances() {
     sendNotifications: false
   });
 
-  // Handle file upload
+  useEffect(() => {
+    const loadData = async () => {
+      const { data: membersData } = await fetchMembers();
+      if (membersData) {
+        setMembers(membersData);
+      }
+
+      const { data: financesData } = await fetchFinances();
+      if (financesData) {
+        setTransactions(financesData);
+      }
+
+      const { data: paymentScheduleData } = await fetchPaymentSchedule();
+      if (paymentScheduleData) {
+        setPaymentSchedule(paymentScheduleData);
+      }
+    };
+    loadData();
+  }, []);
+
   const handleFileUpload = () => {
     toast({
       title: "Comprovante enviado",
@@ -89,7 +106,6 @@ export default function Finances() {
     });
   };
 
-  // Handle deposit form changes
   const handleDepositFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDepositForm({
       ...depositForm,
@@ -97,7 +113,6 @@ export default function Finances() {
     });
   };
 
-  // Handle withdrawal form changes
   const handleWithdrawalFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setWithdrawalForm({
       ...withdrawalForm,
@@ -105,7 +120,6 @@ export default function Finances() {
     });
   };
 
-  // Handle payment form changes
   const handlePaymentFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
     setPaymentForm({
@@ -114,7 +128,6 @@ export default function Finances() {
     });
   };
 
-  // Handle form select changes
   const handleSelectChange = (formName: string, field: string, value: string) => {
     if (formName === 'deposit') {
       setDepositForm({ ...depositForm, [field]: value });
@@ -125,115 +138,104 @@ export default function Finances() {
     }
   };
 
-  // Handle deposit submission
-  const handleDepositSubmit = () => {
-    const newTransaction: Transaction = {
-      id: Date.now(),
+  const handleDepositSubmit = async () => {
+    const newTransaction = {
       type: "deposit",
       amount: Number(depositForm.amount),
-      member: depositForm.member,
+      member_id: depositForm.member,
       description: depositForm.description,
-      date: new Date().toLocaleDateString(),
-      proofUrl: null,
-      verified: false
+      proof_url: null
     };
 
-    setTransactions([newTransaction, ...transactions]);
-    
-    // Update monthly data for the current month
-    const currentMonth = new Date().getMonth();
-    const updatedMonthlyData = [...monthlyData];
-    updatedMonthlyData[currentMonth].income += Number(depositForm.amount);
-    setMonthlyData(updatedMonthlyData);
+    const { success } = await addFinanceRecord(newTransaction);
+    if (success) {
+      const { data: financesData } = await fetchFinances();
+      if (financesData) {
+        setTransactions(financesData);
+      }
 
-    toast({
-      title: "Depósito registrado",
-      description: "O depósito foi registrado com sucesso",
-    });
-    
-    setDepositForm({
-      amount: "",
-      member: "",
-      description: ""
-    });
-    
-    setIsAddDepositOpen(false);
+      const currentMonth = new Date().getMonth();
+      const updatedMonthlyData = [...monthlyData];
+      updatedMonthlyData[currentMonth].income += Number(depositForm.amount);
+      setMonthlyData(updatedMonthlyData);
+
+      setDepositForm({
+        amount: "",
+        member: "",
+        description: ""
+      });
+      
+      setIsAddDepositOpen(false);
+    }
   };
 
-  // Handle withdrawal submission
-  const handleWithdrawalSubmit = () => {
-    const newTransaction: Transaction = {
-      id: Date.now(),
+  const handleWithdrawalSubmit = async () => {
+    const newTransaction = {
       type: "withdrawal",
       amount: Number(withdrawalForm.amount),
-      member: withdrawalForm.member,
+      member_id: withdrawalForm.member,
       description: withdrawalForm.description,
-      date: new Date().toLocaleDateString(),
-      proofUrl: null,
-      verified: false
+      proof_url: null
     };
 
-    setTransactions([newTransaction, ...transactions]);
-    
-    // Update monthly data for the current month
-    const currentMonth = new Date().getMonth();
-    const updatedMonthlyData = [...monthlyData];
-    updatedMonthlyData[currentMonth].expenses += Number(withdrawalForm.amount);
-    setMonthlyData(updatedMonthlyData);
+    const { success } = await addFinanceRecord(newTransaction);
+    if (success) {
+      const { data: financesData } = await fetchFinances();
+      if (financesData) {
+        setTransactions(financesData);
+      }
 
-    toast({
-      title: "Retirada registrada",
-      description: "A retirada foi registrada com sucesso",
-    });
-    
-    setWithdrawalForm({
-      amount: "",
-      reason: "",
-      member: "",
-      description: ""
-    });
-    
-    setIsAddWithdrawalOpen(false);
+      const currentMonth = new Date().getMonth();
+      const updatedMonthlyData = [...monthlyData];
+      updatedMonthlyData[currentMonth].expenses += Number(withdrawalForm.amount);
+      setMonthlyData(updatedMonthlyData);
+
+      setWithdrawalForm({
+        amount: "",
+        reason: "",
+        member: "",
+        description: ""
+      });
+      
+      setIsAddWithdrawalOpen(false);
+    }
   };
 
-  // Handle payment submission
-  const handlePaymentSubmit = () => {
-    const newPayment: PaymentSchedule = {
-      id: Date.now(),
+  const handlePaymentSubmit = async () => {
+    const newPayment = {
       title: paymentForm.title,
       amount: Number(paymentForm.amount),
-      dueDate: paymentForm.dueDate,
+      due_date: paymentForm.dueDate,
       members: [paymentForm.members]
     };
 
-    setPaymentSchedule([...paymentSchedule, newPayment]);
+    const { success } = await addPaymentSchedule(newPayment);
+    if (success) {
+      const { data: paymentScheduleData } = await fetchPaymentSchedule();
+      if (paymentScheduleData) {
+        setPaymentSchedule(paymentScheduleData);
+      }
 
-    toast({
-      title: "Pagamento agendado",
-      description: "O pagamento foi agendado com sucesso",
-    });
-    
-    setPaymentForm({
-      title: "",
-      amount: "",
-      dueDate: "",
-      members: "",
-      description: "",
-      sendNotifications: false
-    });
-    
-    setIsAddPaymentOpen(false);
+      setPaymentForm({
+        title: "",
+        amount: "",
+        dueDate: "",
+        members: "",
+        description: "",
+        sendNotifications: false
+      });
+      
+      setIsAddPaymentOpen(false);
+    }
   };
 
-  // Filter transactions
   const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch = transaction.member.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = transaction.member_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "all" || transaction.type === filterType;
     return matchesSearch && matchesType;
   });
 
-  // Calculate totals
   const totalBalance = transactions.reduce((acc, transaction) => {
     if (transaction.type === 'deposit') {
       return acc + transaction.amount;
@@ -256,7 +258,6 @@ export default function Finances() {
     return acc;
   }, 0);
 
-  // Current month income/expenses
   const currentMonth = new Date().getMonth();
   const currentMonthIncome = monthlyData[currentMonth]?.income || 0;
   const currentMonthExpenses = monthlyData[currentMonth]?.expenses || 0;
@@ -264,7 +265,7 @@ export default function Finances() {
   return (
     <div className="container mx-auto px-4 pb-10">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Finanças (Não funcional ainda)</h1>
+        <h1 className="text-3xl font-bold">Finanças</h1>
         
         <div className="flex space-x-2">
           <Dialog open={isAddDepositOpen} onOpenChange={setIsAddDepositOpen}>
@@ -305,10 +306,11 @@ export default function Finances() {
                       <SelectValue placeholder="Selecionar membro" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Carlos Silva">Carlos Silva</SelectItem>
-                      <SelectItem value="Maria Santos">Maria Santos</SelectItem>
-                      <SelectItem value="Pedro Alves">Pedro Alves</SelectItem>
-                      <SelectItem value="Ana Costa">Ana Costa</SelectItem>
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -416,10 +418,11 @@ export default function Finances() {
                       <SelectValue placeholder="Selecionar membro" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Carlos Silva">Carlos Silva</SelectItem>
-                      <SelectItem value="Maria Santos">Maria Santos</SelectItem>
-                      <SelectItem value="Pedro Alves">Pedro Alves</SelectItem>
-                      <SelectItem value="Ana Costa">Ana Costa</SelectItem>
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -493,6 +496,7 @@ export default function Finances() {
                   <span className="text-2xl font-bold">${totalBalance.toLocaleString()}</span>
                 </div>
                 <p className={`text-xs ${currentMonthIncome > currentMonthExpenses ? 'text-green-400' : 'text-red-400'} mt-1`}>
+
                   {currentMonthIncome > currentMonthExpenses ? '+' : '-'}${Math.abs(currentMonthIncome - currentMonthExpenses).toLocaleString()} neste mês
                 </p>
               </CardContent>
@@ -577,7 +581,7 @@ export default function Finances() {
                           <ArrowDownCircle className="h-5 w-5 text-red-500 mr-2" />
                         )}
                         <div>
-                          <p className="text-sm font-medium">{transaction.member}</p>
+                          <p className="text-sm font-medium">{transaction.member_name}</p>
                           <p className="text-xs text-gray-400">{transaction.description}</p>
                         </div>
                       </div>
@@ -585,7 +589,7 @@ export default function Finances() {
                         <span className={`font-medium ${transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'}`}>
                           {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString()}
                         </span>
-                        <p className="text-xs text-gray-400">{transaction.date}</p>
+                        <p className="text-xs text-gray-400">{new Date(transaction.date).toLocaleDateString()}</p>
                       </div>
                     </div>
                   ))}
@@ -619,7 +623,7 @@ export default function Finances() {
                           <div>
                             <h4 className="font-medium">{payment.title}</h4>
                             <div className="flex items-center text-xs text-gray-400 mt-1">
-                              <Calendar className="h-3 w-3 mr-1" /> Vencimento: {payment.dueDate}
+                              <Calendar className="h-3 w-3 mr-1" /> Vencimento: {new Date(payment.due_date).toLocaleDateString()}
                             </div>
                           </div>
                           <span className="font-medium text-primary">${payment.amount.toLocaleString()}</span>
@@ -713,14 +717,14 @@ export default function Finances() {
                               </span>
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-sm">{transaction.member}</td>
+                          <td className="px-4 py-3 text-sm">{transaction.member_name}</td>
                           <td className="px-4 py-3 text-sm max-w-[200px] truncate">{transaction.description}</td>
                           <td className={`px-4 py-3 text-right text-sm font-medium ${
                             transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'
                           }`}>
                             {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-sm text-center">{transaction.date}</td>
+                          <td className="px-4 py-3 text-sm text-center">{new Date(transaction.date).toLocaleDateString()}</td>
                           <td className="px-4 py-3 text-center">
                             {transaction.verified ? (
                               <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
@@ -734,7 +738,7 @@ export default function Finances() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex justify-end gap-2">
-                              {transaction.proofUrl ? (
+                              {transaction.proof_url ? (
                                 <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary">
                                   Ver Comprovante
                                 </Button>
@@ -862,10 +866,11 @@ export default function Finances() {
                           <SelectContent>
                             <SelectItem value="Todos os membros">Todos os membros</SelectItem>
                             <SelectItem value="Apenas líderes">Apenas líderes</SelectItem>
-                            <SelectItem value="Carlos Silva">Carlos Silva</SelectItem>
-                            <SelectItem value="Maria Santos">Maria Santos</SelectItem>
-                            <SelectItem value="Pedro Alves">Pedro Alves</SelectItem>
-                            <SelectItem value="Ana Costa">Ana Costa</SelectItem>
+                            {members.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -922,12 +927,12 @@ export default function Finances() {
                     <Card key={payment.id} className="bg-secondary border-primary/10">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg">{payment.title}</CardTitle>
-                            <CardDescription>
-                              Vencimento: {payment.dueDate}
-                            </CardDescription>
-                          </div>
+                        <div>
+  <CardTitle className="text-lg">{payment.title}</CardTitle>
+  <CardDescription>
+    Vencimento: {new Date(payment.due_date).toLocaleDateString()}
+  </CardDescription>
+</div>
                           <div className="text-right">
                             <p className="text-xl font-bold text-primary">
                               ${payment.amount.toLocaleString()}
