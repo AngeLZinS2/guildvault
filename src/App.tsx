@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
 import Finances from "./pages/Finances";
 import Members from "./pages/Members";
+import Minigames from "./pages/Minigames";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import { AnimatedBackground } from "./components/AnimatedBackground";
@@ -96,6 +97,15 @@ const App = () => {
                 <Navbar />
                 <div className="pt-16">
                   <Members />
+                </div>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/minigames" element={
+              <ProtectedRoute>
+                <Navbar />
+                <div className="pt-16">
+                  <Minigames />
                 </div>
               </ProtectedRoute>
             } />
