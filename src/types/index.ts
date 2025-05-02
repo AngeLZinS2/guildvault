@@ -1,4 +1,4 @@
 
-import { MemberData } from "./member-types";
+import { MemberData, PaginationInfo } from "./member-types";
 
-export type { MemberData };
+export type { MemberData, PaginationInfo };

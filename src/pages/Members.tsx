@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, UserRound, UserCheck, UserX, Copy } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
-import { addMemberWithAuth, fetchMembers, updateMemberStatus, type MemberData } from '@/services/memberService';
+import { addMemberWithAuth, fetchMembers, updateMemberStatus } from '@/services/memberService';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PaginationControls } from '@/components/members/PaginationControls';
+import { PaginationInfo } from '@/types';
 
 type Member = {
   id: string;
@@ -33,6 +36,8 @@ const formSchema = z.object({
   stateId: z.string().min(2, { message: 'State ID é obrigatório' }),
 });
 
+const ITEMS_PER_PAGE = 10;
+
 const Members = () => {
   const navigate = useNavigate();
   const [members, setMembers] = useState<Member[]>([]);
@@ -41,6 +46,14 @@ const Members = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showNewMemberForm, setShowNewMemberForm] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    pageSize: ITEMS_PER_PAGE,
+    totalItems: 0,
+    totalPages: 1
+  });
   
   // Form hook
   const form = useForm<z.infer<typeof formSchema>>({
@@ -71,6 +84,12 @@ const Members = () => {
     const result = await fetchMembers();
     if (result.success && result.data) {
       setMembers(result.data);
+      // Update pagination
+      setPagination(prevState => ({
+        ...prevState,
+        totalItems: result.data.length,
+        totalPages: Math.ceil(result.data.length / ITEMS_PER_PAGE)
+      }));
     } else {
       toast({
         title: "Erro ao carregar membros",
@@ -95,6 +114,33 @@ const Members = () => {
     if (statusFilter === 'all') return matchesSearch;
     return matchesSearch && member.status === statusFilter;
   });
+  
+  // Get current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+    return filteredMembers.slice(startIndex, startIndex + pagination.pageSize);
+  };
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setPagination({
+      ...pagination,
+      currentPage: page
+    });
+    
+    // Scroll to top of the table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  useEffect(() => {
+    // Update total pages when filters change
+    setPagination(prevState => ({
+      ...prevState,
+      currentPage: 1, // Reset to first page when filters change
+      totalItems: filteredMembers.length,
+      totalPages: Math.ceil(filteredMembers.length / ITEMS_PER_PAGE) || 1
+    }));
+  }, [filteredMembers.length]);
 
   // Toggle status
   const toggleStatus = async (id: string) => {
@@ -137,7 +183,7 @@ const Members = () => {
   // Add member
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
-    const memberData: MemberData = {
+    const memberData = {
       name: data.name,
       email: data.email,
       role: data.role,
@@ -220,33 +266,33 @@ const Members = () => {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="text-left border-b border-guild-primary/20">
-                  <th className="px-4 py-3 text-gray-300">Nome</th>
-                  <th className="px-4 py-3 text-gray-300">State ID</th>
-                  <th className="px-4 py-3 text-gray-300">Email</th>
-                  <th className="px-4 py-3 text-gray-300">Função</th>
-                  <th className="px-4 py-3 text-gray-300">Status</th>
-                  <th className="px-4 py-3 text-gray-300">Data de entrada</th>
-                  <th className="px-4 py-3 text-gray-300">Última atividade</th>
-                  <th className="px-4 py-3 text-gray-300">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-guild-primary/20">
+                  <TableHead className="text-gray-300">Nome</TableHead>
+                  <TableHead className="text-gray-300">State ID</TableHead>
+                  <TableHead className="text-gray-300">Email</TableHead>
+                  <TableHead className="text-gray-300">Função</TableHead>
+                  <TableHead className="text-gray-300">Status</TableHead>
+                  <TableHead className="text-gray-300">Data de entrada</TableHead>
+                  <TableHead className="text-gray-300">Última atividade</TableHead>
+                  <TableHead className="text-gray-300">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-400">
                       Carregando membros...
-                    </td>
-                  </tr>
-                ) : filteredMembers.length > 0 ? (
-                  filteredMembers.map((member) => (
-                    <tr key={member.id} className="border-b border-guild-primary/10 hover:bg-guild-primary/5">
-                      <td className="px-4 py-3 text-white">{member.name}</td>
-                      <td className="px-4 py-3 text-white">{member.state_id || '—'}</td>
-                      <td className="px-4 py-3 text-white">{member.email || '—'}</td>
-                      <td className="px-4 py-3">
+                    </TableCell>
+                  </TableRow>
+                ) : getCurrentPageItems().length > 0 ? (
+                  getCurrentPageItems().map((member) => (
+                    <TableRow key={member.id} className="border-b border-guild-primary/10 hover:bg-guild-primary/5">
+                      <TableCell className="text-white">{member.name}</TableCell>
+                      <TableCell className="text-white">{member.state_id || '—'}</TableCell>
+                      <TableCell className="text-white">{member.email || '—'}</TableCell>
+                      <TableCell>
                         <Badge className={
                           member.role === 'Líder' ? 'bg-guild-primary text-white' : 
                           member.role === 'Segurança' ? 'bg-red-500/80 text-white' : 
@@ -254,18 +300,18 @@ const Members = () => {
                         }>
                           {member.role}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <Badge className={
                           member.status === 'active' ? 'bg-green-500/80 text-white' : 
                           'bg-red-500/80 text-white'
                         }>
                           {member.status === 'active' ? 'Ativo' : 'Inativo'}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-gray-300">{member.join_date}</td>
-                      <td className="px-4 py-3 text-gray-300">{member.last_activity || '—'}</td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="text-gray-300">{member.join_date}</TableCell>
+                      <TableCell className="text-gray-300">{member.last_activity || '—'}</TableCell>
+                      <TableCell>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -275,19 +321,38 @@ const Members = () => {
                         >
                           {member.status === 'active' ? 'Desativar' : 'Ativar'}
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-400">
                       Nenhum membro encontrado. Adicione novos membros usando o botão acima.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
+          
+          {/* Pagination controls */}
+          {filteredMembers.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <PaginationControls 
+                pagination={pagination} 
+                onPageChange={handlePageChange} 
+              />
+            </div>
+          )}
+          
+          {/* Pagination summary */}
+          {filteredMembers.length > 0 && (
+            <div className="text-center text-sm text-gray-400 mt-2">
+              Mostrando {Math.min(filteredMembers.length, (pagination.currentPage - 1) * pagination.pageSize + 1)} 
+              -{Math.min(filteredMembers.length, pagination.currentPage * pagination.pageSize)} 
+              {' '}de {filteredMembers.length} membros
+            </div>
+          )}
         </CardContent>
       </Card>
 
