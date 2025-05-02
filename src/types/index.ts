@@ -1,4 +1,4 @@
 
 import { MemberData } from "./member-types";
 
-export { MemberData };
+export type { MemberData };
