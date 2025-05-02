@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { VideoBackground } from "@/components/VideoBackground";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export default function MemberLogin() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function MemberLogin() {
 
   return (
     <>
-      <VideoBackground />
+      <AnimatedBackground />
       
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">

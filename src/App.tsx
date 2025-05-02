@@ -13,6 +13,7 @@ import Finances from "./pages/Finances";
 import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
+import { AnimatedBackground } from "./components/AnimatedBackground";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -47,7 +48,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <div className="flex items-center justify-center h-screen">Carregando...</div>;
   }
 
-  return authenticated ? <>{children}</> : <Navigate to="/" />;
+  return authenticated ? (
+    <>
+      <AnimatedBackground />
+      {children}
+    </>
+  ) : <Navigate to="/" />;
 };
 
 const App = () => {
