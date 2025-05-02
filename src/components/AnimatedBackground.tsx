@@ -21,24 +21,6 @@ export const AnimatedBackground: React.FC = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    // Set canvas size to window size
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initParticles();
-    };
-    
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    
-    // Track mouse position
-    const handleMouseMove = (event: MouseEvent) => {
-      mouseRef.current.x = event.clientX;
-      mouseRef.current.y = event.clientY;
-    };
-    
-    window.addEventListener("mousemove", handleMouseMove);
-    
     // Initialize particles
     let particles: Particle[] = [];
     
@@ -65,6 +47,24 @@ export const AnimatedBackground: React.FC = () => {
         });
       }
     };
+    
+    // Set canvas size to window size
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initParticles();
+    };
+    
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    
+    // Track mouse position
+    const handleMouseMove = (event: MouseEvent) => {
+      mouseRef.current.x = event.clientX;
+      mouseRef.current.y = event.clientY;
+    };
+    
+    window.addEventListener("mousemove", handleMouseMove);
     
     // Animation loop
     const animate = () => {
