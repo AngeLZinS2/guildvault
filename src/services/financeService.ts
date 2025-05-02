@@ -1,3 +1,4 @@
+
   import { supabase } from "@/integrations/supabase/client";
   import { toast } from "@/components/ui/use-toast";
   import type { Database } from "@/integrations/supabase/types";
@@ -16,6 +17,12 @@
     due_date: string;
     members: string[];
   };
+
+  export type MonthlyStatsData = {
+    month: string;
+    income: number;
+    expenses: number;
+  }
 
   export const addFinanceRecord = async (data: FinanceData) => {
     try {
@@ -194,6 +201,50 @@
         description: error.message,
         variant: "destructive"
       });
+      return { success: false, error };
+    }
+  };
+
+  export const fetchMonthlyStats = async () => {
+    try {
+      const currentYear = new Date().getFullYear();
+      
+      // Get all transactions for the current year
+      const { data: finances, error } = await supabase
+        .from('finances')
+        .select('*')
+        .gte('date', `${currentYear}-01-01`)
+        .lte('date', `${currentYear}-12-31`);
+
+      if (error) throw error;
+
+      // Create monthly stats data
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      
+      // Initialize the monthly data
+      const monthlyStats: MonthlyStatsData[] = monthNames.map((month, index) => ({
+        month,
+        income: 0,
+        expenses: 0
+      }));
+
+      // Aggregate the finance data by month
+      if (finances) {
+        finances.forEach(finance => {
+          const date = new Date(finance.date as string);
+          const monthIndex = date.getMonth();
+          
+          if (finance.type === 'deposit') {
+            monthlyStats[monthIndex].income += finance.amount;
+          } else if (finance.type === 'withdrawal') {
+            monthlyStats[monthIndex].expenses += finance.amount;
+          }
+        });
+      }
+
+      return { success: true, data: monthlyStats };
+    } catch (error: any) {
+      console.error("Erro ao buscar estatísticas mensais:", error.message);
       return { success: false, error };
     }
   };

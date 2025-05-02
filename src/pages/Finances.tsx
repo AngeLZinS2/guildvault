@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,15 +9,12 @@ import {
   ArrowDownCircle, 
   Calendar, 
   Upload, 
-  Download, 
-  AlertCircle, 
   DollarSign,
-  BarChart4,
-  ChevronsUpDown,
-  Filter,
+  AlertCircle,
   Search,
   FileText,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 import { 
   Select, 
@@ -27,35 +25,37 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { 
-  BarChart, Bar, LineChart, Line,
+  BarChart, Bar, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { addFinanceRecord, fetchFinances, updateFinanceVerification, fetchPaymentSchedule, addPaymentSchedule, deletePaymentSchedule, updatePaymentSchedule } from "@/services/financeService";
+import { toast } from "@/hooks/use-toast";
+import { 
+  addFinanceRecord, 
+  fetchFinances, 
+  updateFinanceVerification, 
+  fetchPaymentSchedule, 
+  addPaymentSchedule, 
+  deletePaymentSchedule, 
+  updatePaymentSchedule,
+  fetchMonthlyStats
+} from "@/services/financeService";
 import { fetchMembers } from "@/services/memberService";
 import { MemberData } from "@/types";
 
 export default function Finances() {
-  const [transactions, setTransactions] = useState([]);
-  const [paymentSchedule, setPaymentSchedule] = useState([]);
-  const [monthlyData, setMonthlyData] = useState([
-    { month: "Jan", income: 0, expenses: 0 },
-    { month: "Fev", income: 0, expenses: 0 },
-    { month: "Mar", income: 0, expenses: 0 },
-    { month: "Abr", income: 0, expenses: 0 },
-    { month: "Mai", income: 0, expenses: 0 },
-    { month: "Jun", income: 0, expenses: 0 },
-  ]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [members, setMembers] = useState<MemberData[]>([]);
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [isAddDepositOpen, setIsAddDepositOpen] = useState(false);
   const [isAddWithdrawalOpen, setIsAddWithdrawalOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [loading, setLoading] = useState(true);
 
   const [depositForm, setDepositForm] = useState({
     amount: "",
@@ -81,21 +81,43 @@ export default function Finances() {
 
   useEffect(() => {
     const loadData = async () => {
-      const { data: membersData } = await fetchMembers();
-      if (membersData) {
-        setMembers(membersData);
-      }
+      setLoading(true);
+      try {
+        // Load members
+        const { data: membersData } = await fetchMembers();
+        if (membersData) {
+          setMembers(membersData);
+        }
 
-      const { data: financesData } = await fetchFinances();
-      if (financesData) {
-        setTransactions(financesData);
-      }
+        // Load finances
+        const { data: financesData } = await fetchFinances();
+        if (financesData) {
+          setTransactions(financesData);
+        }
 
-      const { data: paymentScheduleData } = await fetchPaymentSchedule();
-      if (paymentScheduleData) {
-        setPaymentSchedule(paymentScheduleData);
+        // Load payment schedule
+        const { data: paymentScheduleData } = await fetchPaymentSchedule();
+        if (paymentScheduleData) {
+          setPaymentSchedule(paymentScheduleData);
+        }
+
+        // Load monthly stats
+        const { data: monthlyStatsData } = await fetchMonthlyStats();
+        if (monthlyStatsData) {
+          setMonthlyData(monthlyStatsData);
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível carregar os dados financeiros",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
     };
+    
     loadData();
   }, []);
 
@@ -138,9 +160,30 @@ export default function Finances() {
     }
   };
 
+  const refreshData = async () => {
+    const { data: financesData } = await fetchFinances();
+    if (financesData) {
+      setTransactions(financesData);
+    }
+    
+    const { data: monthlyStatsData } = await fetchMonthlyStats();
+    if (monthlyStatsData) {
+      setMonthlyData(monthlyStatsData);
+    }
+  };
+
   const handleDepositSubmit = async () => {
+    if (!depositForm.amount || !depositForm.member) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newTransaction = {
-      type: "deposit",
+      type: "deposit" as 'deposit' | 'withdrawal',
       amount: Number(depositForm.amount),
       member_id: depositForm.member,
       description: depositForm.description,
@@ -149,15 +192,7 @@ export default function Finances() {
 
     const { success } = await addFinanceRecord(newTransaction);
     if (success) {
-      const { data: financesData } = await fetchFinances();
-      if (financesData) {
-        setTransactions(financesData);
-      }
-
-      const currentMonth = new Date().getMonth();
-      const updatedMonthlyData = [...monthlyData];
-      updatedMonthlyData[currentMonth].income += Number(depositForm.amount);
-      setMonthlyData(updatedMonthlyData);
+      await refreshData();
 
       setDepositForm({
         amount: "",
@@ -170,25 +205,26 @@ export default function Finances() {
   };
 
   const handleWithdrawalSubmit = async () => {
+    if (!withdrawalForm.amount || !withdrawalForm.member) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newTransaction = {
-      type: "withdrawal",
+      type: "withdrawal" as 'deposit' | 'withdrawal',
       amount: Number(withdrawalForm.amount),
       member_id: withdrawalForm.member,
-      description: withdrawalForm.description,
+      description: withdrawalForm.description || withdrawalForm.reason,
       proof_url: null
     };
 
     const { success } = await addFinanceRecord(newTransaction);
     if (success) {
-      const { data: financesData } = await fetchFinances();
-      if (financesData) {
-        setTransactions(financesData);
-      }
-
-      const currentMonth = new Date().getMonth();
-      const updatedMonthlyData = [...monthlyData];
-      updatedMonthlyData[currentMonth].expenses += Number(withdrawalForm.amount);
-      setMonthlyData(updatedMonthlyData);
+      await refreshData();
 
       setWithdrawalForm({
         amount: "",
@@ -202,6 +238,15 @@ export default function Finances() {
   };
 
   const handlePaymentSubmit = async () => {
+    if (!paymentForm.title || !paymentForm.amount || !paymentForm.dueDate || !paymentForm.members) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newPayment = {
       title: paymentForm.title,
       amount: Number(paymentForm.amount),
@@ -229,9 +274,17 @@ export default function Finances() {
     }
   };
 
+  const handleVerifyTransaction = async (id: string, currentVerifiedStatus: boolean) => {
+    const { success } = await updateFinanceVerification(id, !currentVerifiedStatus);
+    if (success) {
+      await refreshData();
+    }
+  };
+
   const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch = transaction.member_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      (transaction.member_name && transaction.member_name.toLowerCase().includes(searchTerm.toLowerCase())) || 
+      (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesType = filterType === "all" || transaction.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -259,8 +312,18 @@ export default function Finances() {
   }, 0);
 
   const currentMonth = new Date().getMonth();
-  const currentMonthIncome = monthlyData[currentMonth]?.income || 0;
-  const currentMonthExpenses = monthlyData[currentMonth]?.expenses || 0;
+  const currentMonthData = monthlyData[currentMonth] || { income: 0, expenses: 0 };
+  const currentMonthIncome = currentMonthData.income;
+  const currentMonthExpenses = currentMonthData.expenses;
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 pt-20 pb-10 flex flex-col items-center justify-center h-[80vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-guild-primary mb-4" />
+        <h2 className="text-xl font-medium">Carregando dados financeiros...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 pb-10">
@@ -374,7 +437,7 @@ export default function Finances() {
               </DialogHeader>
               <form className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label htmlFor="withdraw-amount" className="text-sm font-medium">
+                  <label htmlFor="amount" className="text-sm font-medium">
                     Valor
                   </label>
                   <div className="relative">
@@ -496,7 +559,6 @@ export default function Finances() {
                   <span className="text-2xl font-bold">${totalBalance.toLocaleString()}</span>
                 </div>
                 <p className={`text-xs ${currentMonthIncome > currentMonthExpenses ? 'text-green-400' : 'text-red-400'} mt-1`}>
-
                   {currentMonthIncome > currentMonthExpenses ? '+' : '-'}${Math.abs(currentMonthIncome - currentMonthExpenses).toLocaleString()} neste mês
                 </p>
               </CardContent>
@@ -724,7 +786,9 @@ export default function Finances() {
                           }`}>
                             {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-sm text-center">{new Date(transaction.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {transaction.date ? new Date(transaction.date).toLocaleDateString() : '-'}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             {transaction.verified ? (
                               <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
@@ -738,15 +802,14 @@ export default function Finances() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex justify-end gap-2">
-                              {transaction.proof_url ? (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary">
-                                  Ver Comprovante
-                                </Button>
-                              ) : (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-yellow-500">
-                                  Adicionar Comprovante
-                                </Button>
-                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className={`h-7 px-2 text-xs ${transaction.verified ? 'text-red-500' : 'text-green-500'}`}
+                                onClick={() => handleVerifyTransaction(transaction.id, transaction.verified || false)}
+                              >
+                                {transaction.verified ? 'Desverificar' : 'Verificar'}
+                              </Button>
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
                                 Detalhes
                               </Button>
@@ -927,12 +990,12 @@ export default function Finances() {
                     <Card key={payment.id} className="bg-secondary border-primary/10">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
-                        <div>
-  <CardTitle className="text-lg">{payment.title}</CardTitle>
-  <CardDescription>
-    Vencimento: {new Date(payment.due_date).toLocaleDateString()}
-  </CardDescription>
-</div>
+                          <div>
+                            <CardTitle className="text-lg">{payment.title}</CardTitle>
+                            <CardDescription>
+                              Vencimento: {new Date(payment.due_date).toLocaleDateString()}
+                            </CardDescription>
+                          </div>
                           <div className="text-right">
                             <p className="text-xl font-bold text-primary">
                               ${payment.amount.toLocaleString()}
