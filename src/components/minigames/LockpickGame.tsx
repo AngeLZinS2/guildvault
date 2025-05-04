@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 
 const LockpickGame: React.FC = () => {
@@ -58,17 +57,17 @@ const LockpickGame: React.FC = () => {
     };
     
     const initializeGameLogic = () => {
-      // Elements - using proper TypeScript casting
+      // Elements - usando cast apropriado para TypeScript
       const gameArea = document.getElementById('game-area');
       const progressBar = document.getElementById('progress-bar');
       const progressValue = document.getElementById('progress-value');
       const currentNumberDisplay = document.getElementById('current-number');
-      const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-      const tryAgainBtn = document.getElementById('try-again-btn') as HTMLButtonElement;
+      const startBtn = document.getElementById('start-btn') as HTMLButtonElement | null;
+      const tryAgainBtn = document.getElementById('try-again-btn') as HTMLButtonElement | null;
       const successMessage = document.getElementById('success-message');
       const failureMessage = document.getElementById('failure-message');
       const startMessage = document.getElementById('start-message');
-      const difficultySelector = document.getElementById('difficulty') as HTMLSelectElement;
+      const difficultySelector = document.getElementById('difficulty') as HTMLSelectElement | null;
       const countdown = document.getElementById('countdown');
 
       // Game variables
@@ -616,8 +615,7 @@ const LockpickGame: React.FC = () => {
   
   return (
     <div className="lockpick-game">
-      <style>
-        {`
+      <style dangerouslySetInnerHTML={{__html: `
         .lockpick-game {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -794,8 +792,7 @@ const LockpickGame: React.FC = () => {
           z-index: 3;
           text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
         }
-        `}
-      </style>
+      `}} />
       <div ref={gameRef}></div>
     </div>
   );
