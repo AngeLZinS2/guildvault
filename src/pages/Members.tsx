@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaginationControls } from '@/components/members/PaginationControls';
 import { PaginationInfo } from '@/types';
+import { ColorPersonalization } from '@/components/ColorPersonalization';
 
 type Member = {
   id: string;
@@ -219,13 +219,16 @@ const Members = () => {
               <CardTitle className="text-2xl font-bold text-white">Membros da Guilda</CardTitle>
               <CardDescription className="text-gray-300">Gerencie os membros da sua guilda</CardDescription>
             </div>
-            <Button 
-              onClick={() => setShowNewMemberForm(true)}
-              className="bg-guild-primary hover:bg-guild-primary/80"
-              disabled={isLoading}
-            >
-              Adicionar Membro
-            </Button>
+            <div className="flex">
+              <Button 
+                onClick={() => setShowNewMemberForm(true)}
+                className="bg-guild-primary hover:bg-guild-primary/80"
+                disabled={isLoading}
+              >
+                Adicionar Membro
+              </Button>
+              <ColorPersonalization />
+            </div>
           </div>
         </CardHeader>
         

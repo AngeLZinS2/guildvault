@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, .theme-blue {
     --background: 225 25% 10%;
     --foreground: 210 40% 98%;
 
@@ -14,7 +14,7 @@
     --popover: 222 20% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 198 78% 49%; /* Alterado para azul */
+    --primary: 198 78% 49%; /* Blue */
     --primary-foreground: 210 20% 98%;
 
     --secondary: 20 100% 60%;
@@ -31,9 +31,34 @@
 
     --border: 223 15% 17%;
     --input: 223 15% 17%;
-    --ring: 198 78% 49%; /* Alterado para azul */
+    --ring: 198 78% 49%; /* Blue */
 
     --radius: 0.5rem;
+  }
+
+  .theme-purple {
+    --primary: 264 68% 75%; /* Purple */
+    --ring: 264 68% 75%; /* Purple */
+  }
+
+  .theme-green {
+    --primary: 158 64% 40%; /* Green */
+    --ring: 158 64% 40%; /* Green */
+  }
+
+  .theme-red {
+    --primary: 0 84% 60%; /* Red */
+    --ring: 0 84% 60%; /* Red */
+  }
+
+  .theme-orange {
+    --primary: 24 95% 53%; /* Orange */
+    --ring: 24 95% 53%; /* Orange */
+  }
+
+  .theme-pink {
+    --primary: 330 81% 60%; /* Pink */
+    --ring: 330 81% 60%; /* Pink */
   }
 }
 

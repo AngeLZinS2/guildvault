@@ -13,6 +13,7 @@ import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import { AnimatedBackground } from "./components/AnimatedBackground";
+import { ThemeInitializer } from "./components/ThemeInitializer";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ThemeInitializer />
         <TooltipProvider>
           <Routes>
             <Route path="/" element={<Login />} />
