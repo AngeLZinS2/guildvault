@@ -327,7 +327,7 @@ export default function Dashboard() {
                   <span className="text-2xl font-bold">{propertiesData.total}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {propertiesData.farms} Farms, {propertiesData.hqs} HQs, {propertiesData.warehouses} Depósitos
+                  {propertiesData.farms} Pequena, {propertiesData.hqs} Media, {propertiesData.warehouses} Grande
                 </p>
               </CardContent>
             </Card>
