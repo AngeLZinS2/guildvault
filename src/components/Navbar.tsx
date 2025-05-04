@@ -1,7 +1,6 @@
-
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, Menu, X, Shield, Gamepad2 } from "lucide-react";
+import { LogOut, Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +18,6 @@ const navItems: NavItem[] = [
   { name: "Propriedades", path: "/properties", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
   { name: "Finanças", path: "/finances", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
   { name: "Membros", path: "/members", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
-  { name: "Minigames", path: "/minigames", icon: <Gamepad2 className="w-5 h-5" />, requiresAuth: true },
 ];
 
 export default function Navbar() {
