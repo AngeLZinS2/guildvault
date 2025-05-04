@@ -10,8 +10,8 @@ export default function Minigames() {
       <h1 className="text-3xl font-bold mb-6 text-guild-primary">Minigames</h1>
       
       <Card className="bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/20">
-        <CardHeader>
-          <CardTitle className="text-guild-primary">Treinamento de Habilidades</CardTitle>
+        <CardHeader className="pb-0">
+          <CardTitle className="text-2xl font-semibold text-guild-primary">Treinamento de Habilidades</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <Tabs defaultValue="lockpick">
