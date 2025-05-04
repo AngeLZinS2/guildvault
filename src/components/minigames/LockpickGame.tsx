@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 
 const LockpickGame: React.FC = () => {
@@ -57,17 +58,17 @@ const LockpickGame: React.FC = () => {
     };
     
     const initializeGameLogic = () => {
-      // Elements
+      // Elements - using proper TypeScript casting
       const gameArea = document.getElementById('game-area');
       const progressBar = document.getElementById('progress-bar');
       const progressValue = document.getElementById('progress-value');
       const currentNumberDisplay = document.getElementById('current-number');
-      const startBtn = document.getElementById('start-btn');
-      const tryAgainBtn = document.getElementById('try-again-btn');
+      const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+      const tryAgainBtn = document.getElementById('try-again-btn') as HTMLButtonElement;
       const successMessage = document.getElementById('success-message');
       const failureMessage = document.getElementById('failure-message');
       const startMessage = document.getElementById('start-message');
-      const difficultySelector = document.getElementById('difficulty');
+      const difficultySelector = document.getElementById('difficulty') as HTMLSelectElement;
       const countdown = document.getElementById('countdown');
 
       // Game variables
@@ -146,13 +147,13 @@ const LockpickGame: React.FC = () => {
       function startGame() {
         resetGame();
         if (difficultySelector) {
-          setDifficulty((difficultySelector as HTMLSelectElement).value);
+          setDifficulty(difficultySelector.value);
         }
         generateSequence();
 
         if (startMessage) startMessage.style.display = 'none';
         if (startBtn) startBtn.disabled = true;
-        if (difficultySelector) (difficultySelector as HTMLSelectElement).disabled = true;
+        if (difficultySelector) difficultySelector.disabled = true;
 
         if (countdown) {
           countdown.style.display = 'block';
@@ -536,7 +537,7 @@ const LockpickGame: React.FC = () => {
 
         if (tryAgainBtn) tryAgainBtn.style.display = 'inline-block';
         if (startBtn) startBtn.disabled = false;
-        if (difficultySelector) (difficultySelector as HTMLSelectElement).disabled = false;
+        if (difficultySelector) difficultySelector.disabled = false;
 
         if (isSuccess) {
           if (successMessage) successMessage.style.display = 'block';
@@ -615,7 +616,8 @@ const LockpickGame: React.FC = () => {
   
   return (
     <div className="lockpick-game">
-      <style jsx>{`
+      <style>
+        {`
         .lockpick-game {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -792,7 +794,8 @@ const LockpickGame: React.FC = () => {
           z-index: 3;
           text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
         }
-      `}</style>
+        `}
+      </style>
       <div ref={gameRef}></div>
     </div>
   );
