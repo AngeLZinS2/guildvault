@@ -1,14 +1,20 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileText, ArrowUpCircle, ArrowDownCircle, AlertCircle, Info, Check, X } from "lucide-react";
+import { Search, FileText, ArrowUpCircle, ArrowDownCircle, AlertCircle, Info, Check, X, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { FinanceStatus } from "@/integrations/supabase/client";
+import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 interface Transaction {
   id: string;
@@ -117,6 +123,27 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     }
   };
 
+  const handleExport = (format: 'excel' | 'pdf') => {
+    // Format transactions for export
+    const formattedTransactions = filteredTransactions.map(transaction => ({
+      tipo: transaction.type === 'deposit' ? 'Depósito' : 'Retirada',
+      membro: transaction.member_name,
+      descricao: transaction.description || '-',
+      valor: `${transaction.type === 'deposit' ? '+' : '-'}$${transaction.amount.toLocaleString()}`,
+      data: formatDate(transaction.date),
+      status: transaction.status === FinanceStatus.VERIFIED ? 'Verificado' : 
+              transaction.status === FinanceStatus.REJECTED ? 'Recusado' : 'Pendente'
+    }));
+
+    const fileName = `transacoes-financeiras-${new Date().toISOString().split('T')[0]}`;
+
+    if (format === 'excel') {
+      exportToExcel(formattedTransactions, fileName);
+    } else {
+      exportToPDF(formattedTransactions, fileName);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -142,9 +169,21 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             </SelectContent>
           </Select>
           
-          <Button variant="outline">
-            <FileText className="h-4 w-4 mr-2" /> Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <Download className="h-4 w-4 mr-2" /> Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <Download className="h-4 w-4 mr-2" /> PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

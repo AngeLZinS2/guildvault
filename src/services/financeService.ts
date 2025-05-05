@@ -1,4 +1,3 @@
-
   import { supabase, FinanceStatus } from "@/integrations/supabase/client";
   import { toast } from "@/components/ui/use-toast";
   import type { Database } from "@/integrations/supabase/types";
@@ -81,7 +80,7 @@
       // Get verified by names
       const financesWithNames = finances.map(finance => {
         const member = profiles?.find(p => p.id === finance.member_id);
-        const verifier = profiles?.find(p => p.id === finance.verified_by);
+        const verifier = finance.verified_by ? profiles?.find(p => p.id === finance.verified_by) : null;
         
         return {
           ...finance,

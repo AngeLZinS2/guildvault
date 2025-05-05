@@ -21,7 +21,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Define custom types for using with supabase
 export type Tables = Database['public']['Tables'];
 export type ProfileRow = Tables['profiles']['Row'];
-export type FinanceRow = Tables['finances']['Row'];
+export type FinanceRow = Tables['finances']['Row'] & {
+  verified_by?: string | null;
+  verification_notes?: string | null;
+  status?: FinanceStatus;
+};
 export type GoalRow = Tables['goals']['Row'];
 export type PaymentScheduleRow = Tables['payment_schedule']['Row'];
 
