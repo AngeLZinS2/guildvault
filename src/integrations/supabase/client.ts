@@ -24,3 +24,10 @@ export type ProfileRow = Tables['profiles']['Row'];
 export type FinanceRow = Tables['finances']['Row'];
 export type GoalRow = Tables['goals']['Row'];
 export type PaymentScheduleRow = Tables['payment_schedule']['Row'];
+
+// New finance status enum for improved type checking
+export enum FinanceStatus {
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected'
+}

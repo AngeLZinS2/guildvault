@@ -1,5 +1,5 @@
 
-  import { supabase } from "@/integrations/supabase/client";
+  import { supabase, FinanceStatus } from "@/integrations/supabase/client";
   import { toast } from "@/components/ui/use-toast";
   import type { Database } from "@/integrations/supabase/types";
 
@@ -24,6 +24,13 @@
     expenses: number;
   }
 
+  export type VerificationData = {
+    verified: boolean;
+    status: FinanceStatus;
+    verified_by?: string | null;
+    verification_notes?: string | null;
+  }
+
   export const addFinanceRecord = async (data: FinanceData) => {
     try {
       const { error } = await supabase
@@ -35,7 +42,8 @@
           description: data.description,
           proof_url: data.proof_url,
           date: new Date().toISOString(),
-          verified: false
+          verified: false,
+          status: FinanceStatus.PENDING
         });
 
       if (error) throw error;
@@ -70,11 +78,15 @@
         .from('profiles')
         .select('id, name');
 
+      // Get verified by names
       const financesWithNames = finances.map(finance => {
         const member = profiles?.find(p => p.id === finance.member_id);
+        const verifier = profiles?.find(p => p.id === finance.verified_by);
+        
         return {
           ...finance,
-          member_name: member?.name || 'Unknown'
+          member_name: member?.name || 'Unknown',
+          verifier_name: verifier?.name
         };
       });
 
@@ -85,18 +97,26 @@
     }
   };
 
-  export const updateFinanceVerification = async (id: string, verified: boolean) => {
+  export const updateFinanceVerification = async (id: string, data: VerificationData) => {
     try {
       const { error } = await supabase
         .from('finances')
-        .update({ verified })
+        .update({
+          verified: data.verified,
+          status: data.status,
+          verified_by: data.verified_by,
+          verification_notes: data.verification_notes
+        })
         .eq('id', id);
 
       if (error) throw error;
 
+      const statusText = data.status === FinanceStatus.VERIFIED ? 'verificada' : 
+                        data.status === FinanceStatus.REJECTED ? 'recusada' : 'pendente';
+
       toast({
         title: "Status atualizado",
-        description: `Transação marcada como ${verified ? 'verificada' : 'não verificada'}.`,
+        description: `Transação marcada como ${statusText}.`,
       });
 
       return { success: true };

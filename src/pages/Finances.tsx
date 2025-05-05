@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
@@ -8,11 +7,13 @@ import {
   updateFinanceVerification, 
   fetchPaymentSchedule, 
   addPaymentSchedule, 
-  fetchMonthlyStats
+  fetchMonthlyStats,
+  VerificationData
 } from "@/services/financeService";
 import { fetchMembers } from "@/services/memberService";
 import { MemberData } from "@/types";
 import { toast } from "@/hooks/use-toast";
+import { FinanceStatus } from "@/integrations/supabase/client";
 
 // Import new componentized parts
 import { FinanceHeader } from "@/components/finance/FinanceHeader";
@@ -256,8 +257,8 @@ export default function Finances() {
     }
   };
 
-  const handleVerifyTransaction = async (id: string, currentVerifiedStatus: boolean) => {
-    const { success } = await updateFinanceVerification(id, !currentVerifiedStatus);
+  const handleVerifyTransaction = async (id: string, data: VerificationData) => {
+    const { success } = await updateFinanceVerification(id, data);
     if (success) {
       await refreshData();
     }
@@ -357,6 +358,7 @@ export default function Finances() {
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             onFilterChange={setFilterType}
             onVerifyTransaction={handleVerifyTransaction}
+            currentUserId="test-user-id" // In a real app, this would be the current user's ID
           />
         </TabsContent>
 
