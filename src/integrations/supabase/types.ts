@@ -17,8 +17,11 @@ export type Database = {
           id: string
           member_id: string
           proof_url: string | null
+          status: string | null
           type: string
+          verification_notes: string | null
           verified: boolean | null
+          verified_by: string | null
         }
         Insert: {
           amount: number
@@ -27,8 +30,11 @@ export type Database = {
           id?: string
           member_id: string
           proof_url?: string | null
+          status?: string | null
           type: string
+          verification_notes?: string | null
           verified?: boolean | null
+          verified_by?: string | null
         }
         Update: {
           amount?: number
@@ -37,8 +43,11 @@ export type Database = {
           id?: string
           member_id?: string
           proof_url?: string | null
+          status?: string | null
           type?: string
+          verification_notes?: string | null
           verified?: boolean | null
+          verified_by?: string | null
         }
         Relationships: [
           {
