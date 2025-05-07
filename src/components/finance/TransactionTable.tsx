@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,6 @@ interface Transaction {
   description?: string;
   date: string;
   verified: boolean;
-  status: FinanceStatus;
-  verified_by?: string | null;
-  verifier_name?: string | null;
-  verification_notes?: string | null;
   proof_url?: string | null;
 }
 
@@ -38,7 +35,7 @@ interface TransactionTableProps {
   filterType: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterChange: (value: string) => void;
-  onVerifyTransaction: (id: string, data: { verified: boolean, status: FinanceStatus, verified_by: string | null, verification_notes?: string }) => void;
+  onVerifyTransaction: (id: string, data: { verified: boolean, verified_by: string | null, verification_notes?: string }) => void;
   currentUserId?: string;
 }
 
@@ -56,12 +53,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [verificationOpen, setVerificationOpen] = useState(false);
   const [verificationNotes, setVerificationNotes] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<FinanceStatus>(FinanceStatus.VERIFIED);
 
   const handleVerificationOpen = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
-    setVerificationStatus(transaction.status === FinanceStatus.VERIFIED ? 
-      FinanceStatus.PENDING : FinanceStatus.VERIFIED);
     setVerificationNotes("");
     setVerificationOpen(true);
   };
@@ -69,15 +63,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   const handleVerify = () => {
     if (!selectedTransaction) return;
     
-    const isVerifying = verificationStatus === FinanceStatus.VERIFIED;
-    const isRejecting = verificationStatus === FinanceStatus.REJECTED;
-    
     onVerifyTransaction(
       selectedTransaction.id, 
       {
-        verified: isVerifying,
-        status: verificationStatus,
-        verified_by: isVerifying || isRejecting ? currentUserId : null,
+        verified: !selectedTransaction.verified,
+        verified_by: !selectedTransaction.verified ? currentUserId : null,
         verification_notes: verificationNotes
       }
     );
@@ -99,30 +89,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     });
   };
 
-  const getStatusBadge = (status: FinanceStatus) => {
-    switch(status) {
-      case FinanceStatus.VERIFIED:
-        return (
-          <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
-            Verificado
-          </Badge>
-        );
-      case FinanceStatus.REJECTED:
-        return (
-          <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-red-500">
-            Recusado
-          </Badge>
-        );
-      case FinanceStatus.PENDING:
-      default:
-        return (
-          <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
-            Pendente
-          </Badge>
-        );
-    }
-  };
-
   const handleExport = (format: 'excel' | 'pdf') => {
     // Format transactions for export
     const formattedTransactions = filteredTransactions.map(transaction => ({
@@ -131,8 +97,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       descricao: transaction.description || '-',
       valor: `${transaction.type === 'deposit' ? '+' : '-'}$${transaction.amount.toLocaleString()}`,
       data: formatDate(transaction.date),
-      status: transaction.status === FinanceStatus.VERIFIED ? 'Verificado' : 
-              transaction.status === FinanceStatus.REJECTED ? 'Recusado' : 'Pendente'
+      verificado: transaction.verified ? 'Sim' : 'Não'
     }));
 
     const fileName = `transacoes-financeiras-${new Date().toISOString().split('T')[0]}`;
@@ -198,7 +163,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Descrição</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Valor</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Data</th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Verificado</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Ações</th>
                 </tr>
               </thead>
@@ -232,7 +197,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         {transaction.date ? formatDate(transaction.date) : '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {getStatusBadge(transaction.status || FinanceStatus.PENDING)}
+                        {transaction.verified ? (
+                          <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
+                            Verificado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
+                            Pendente
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
@@ -242,10 +215,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             className="h-7 px-2 text-xs"
                             onClick={() => handleVerificationOpen(transaction)}
                           >
-                            {transaction.status === FinanceStatus.VERIFIED ? (
+                            {transaction.verified ? (
                               <>Reverter</>
-                            ) : transaction.status === FinanceStatus.REJECTED ? (
-                              <>Reavaliar</>
                             ) : (
                               <><Check className="h-3 w-3 mr-1" /> Verificar</>
                             )}
@@ -331,8 +302,16 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
                 
                 <div>
-                  <p className="text-sm text-gray-400">Status</p>
-                  {getStatusBadge(selectedTransaction.status || FinanceStatus.PENDING)}
+                  <p className="text-sm text-gray-400">Verificado</p>
+                  {selectedTransaction.verified ? (
+                    <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
+                      Sim
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
+                      Não
+                    </Badge>
+                  )}
                 </div>
               </div>
               
@@ -358,25 +337,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <p className="font-medium">{selectedTransaction.description || "Sem descrição"}</p>
               </div>
               
-              {/* New verification information */}
-              {selectedTransaction.status !== FinanceStatus.PENDING && (
-                <>
-                  <div>
-                    <p className="text-sm text-gray-400">
-                      {selectedTransaction.status === FinanceStatus.VERIFIED ? 'Verificado por' : 'Recusado por'}
-                    </p>
-                    <p className="font-medium">{selectedTransaction.verifier_name || "Desconhecido"}</p>
-                  </div>
-                  
-                  {selectedTransaction.verification_notes && (
-                    <div>
-                      <p className="text-sm text-gray-400">Observações</p>
-                      <p className="font-medium">{selectedTransaction.verification_notes}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              
               <div>
                 <p className="text-sm text-gray-400">ID da Transação</p>
                 <p className="font-medium text-xs opacity-70">{selectedTransaction.id}</p>
@@ -399,15 +359,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               
               <div className="flex justify-end gap-2 pt-4">
                 <Button 
-                  variant={selectedTransaction.status === FinanceStatus.VERIFIED ? "destructive" : "default"}
+                  variant={selectedTransaction.verified ? "destructive" : "default"}
                   size="sm"
                   onClick={() => {
                     setDetailsOpen(false);
                     handleVerificationOpen(selectedTransaction);
                   }}
                 >
-                  {selectedTransaction.status === FinanceStatus.VERIFIED ? "Reverter verificação" : 
-                   selectedTransaction.status === FinanceStatus.REJECTED ? "Reavaliar" : "Verificar"}
+                  {selectedTransaction.verified ? "Reverter verificação" : "Verificar"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setDetailsOpen(false)}>Fechar</Button>
               </div>
@@ -421,54 +380,17 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {verificationStatus === FinanceStatus.VERIFIED ? "Verificar Transação" : 
-               verificationStatus === FinanceStatus.REJECTED ? "Recusar Transação" : "Modificar Status"}
+              {selectedTransaction?.verified ? "Reverter Verificação" : "Verificar Transação"}
             </DialogTitle>
             <DialogDescription>
-              {verificationStatus === FinanceStatus.VERIFIED ? "Confirme que esta transação é válida." : 
-               verificationStatus === FinanceStatus.REJECTED ? "Indique o motivo da recusa." : 
-               "Modificar o status desta transação."}
+              {selectedTransaction?.verified 
+                ? "Reverter o status de verificação desta transação."
+                : "Confirme que esta transação é válida."}
             </DialogDescription>
           </DialogHeader>
           
           {selectedTransaction && (
             <div className="space-y-4 py-4">
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium">Selecione o status:</p>
-                <div className="flex flex-wrap gap-3">
-                  <button 
-                    onClick={() => setVerificationStatus(FinanceStatus.VERIFIED)}
-                    className={`px-4 py-2 rounded-md flex items-center gap-2 ${
-                      verificationStatus === FinanceStatus.VERIFIED 
-                        ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
-                        : 'bg-muted hover:bg-green-500/10 hover:text-green-500'
-                    }`}
-                  >
-                    <Check className="h-4 w-4" /> Verificar
-                  </button>
-                  <button 
-                    onClick={() => setVerificationStatus(FinanceStatus.REJECTED)}
-                    className={`px-4 py-2 rounded-md flex items-center gap-2 ${
-                      verificationStatus === FinanceStatus.REJECTED 
-                        ? 'bg-red-500/20 text-red-500 border border-red-500/30' 
-                        : 'bg-muted hover:bg-red-500/10 hover:text-red-500'
-                    }`}
-                  >
-                    <X className="h-4 w-4" /> Recusar
-                  </button>
-                  <button 
-                    onClick={() => setVerificationStatus(FinanceStatus.PENDING)}
-                    className={`px-4 py-2 rounded-md flex items-center gap-2 ${
-                      verificationStatus === FinanceStatus.PENDING 
-                        ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' 
-                        : 'bg-muted hover:bg-yellow-500/10 hover:text-yellow-500'
-                    }`}
-                  >
-                    <AlertCircle className="h-4 w-4" /> Pendente
-                  </button>
-                </div>
-              </div>
-              
               <div className="space-y-2">
                 <label htmlFor="notes" className="text-sm font-medium">
                   Observações (opcional)
@@ -486,11 +408,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <Button variant="outline" onClick={() => setVerificationOpen(false)}>Cancelar</Button>
                 <Button 
                   onClick={handleVerify}
-                  variant={verificationStatus === FinanceStatus.VERIFIED ? "default" : 
-                          verificationStatus === FinanceStatus.REJECTED ? "destructive" : "secondary"}
+                  variant={selectedTransaction.verified ? "destructive" : "default"}
                 >
-                  {verificationStatus === FinanceStatus.VERIFIED ? "Verificar" : 
-                   verificationStatus === FinanceStatus.REJECTED ? "Recusar" : "Definir como Pendente"}
+                  {selectedTransaction.verified ? "Reverter verificação" : "Verificar"}
                 </Button>
               </DialogFooter>
             </div>

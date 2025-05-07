@@ -1,4 +1,3 @@
-
   import { supabase, FinanceStatus } from "@/integrations/supabase/client";
   import { toast } from "@/components/ui/use-toast";
   import type { Database } from "@/integrations/supabase/types";
@@ -26,7 +25,6 @@
 
   export type VerificationData = {
     verified: boolean;
-    status: FinanceStatus;
     verified_by?: string | null;
     verification_notes?: string | null;
   }
@@ -42,8 +40,7 @@
           description: data.description,
           proof_url: data.proof_url,
           date: new Date().toISOString(),
-          verified: false,
-          status: FinanceStatus.PENDING
+          verified: false
         });
 
       if (error) throw error;
@@ -82,9 +79,9 @@
       const financesWithNames = finances.map(finance => {
         const member = profiles?.find(p => p.id === finance.member_id);
         
-        // Handle the verified_by property safely with type assertion
-        const verifier = (finance as any).verified_by ? 
-          profiles?.find(p => p.id === (finance as any).verified_by) : null;
+        // Handle the verified_by property safely
+        const verifier = finance.verified_by ? 
+          profiles?.find(p => p.id === finance.verified_by) : null;
         
         return {
           ...finance,
@@ -106,7 +103,6 @@
         .from('finances')
         .update({
           verified: data.verified,
-          status: data.status,
           verified_by: data.verified_by,
           verification_notes: data.verification_notes
         })
@@ -114,12 +110,9 @@
 
       if (error) throw error;
 
-      const statusText = data.status === FinanceStatus.VERIFIED ? 'verificada' : 
-                        data.status === FinanceStatus.REJECTED ? 'recusada' : 'pendente';
-
       toast({
         title: "Status atualizado",
-        description: `Transação marcada como ${statusText}.`,
+        description: data.verified ? "Transação verificada com sucesso." : "Verificação removida com sucesso.",
       });
 
       return { success: true };

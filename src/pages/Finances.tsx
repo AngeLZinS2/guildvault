@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
@@ -13,7 +14,6 @@ import {
 import { fetchMembers } from "@/services/memberService";
 import { MemberData } from "@/types";
 import { toast } from "@/hooks/use-toast";
-import { FinanceStatus } from "@/integrations/supabase/client";
 
 // Import new componentized parts
 import { FinanceHeader } from "@/components/finance/FinanceHeader";
