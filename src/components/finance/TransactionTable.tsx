@@ -171,7 +171,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   <TableHead>Descrição</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-center">Data</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -204,17 +203,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                       <TableCell className="text-center">
                         {transaction.date ? formatDate(transaction.date) : '-'}
                       </TableCell>
-                      <TableCell className="text-center">
-                        {transaction.verified ? (
-                          <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
-                            Verificado
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
-                            Pendente
-                          </Badge>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button 
@@ -243,7 +231,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <AlertCircle className="h-10 w-10 text-gray-500 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-300 mb-1">Nenhuma transação encontrada</h3>
                       <p className="text-gray-400">
@@ -310,7 +298,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
                 
                 <div>
-                  <p className="text-sm text-gray-400">Status</p>
+                  <p className="text-sm text-gray-400">Verificação</p>
                   {selectedTransaction.verified ? (
                     <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
                       Verificado

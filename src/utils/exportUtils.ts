@@ -37,7 +37,7 @@ export const exportToPDF = async (data: TransactionForExport[], fileName: string
   
   // Generate table
   autoTable(doc, {
-    head: [['Tipo', 'Membro', 'Descrição', 'Valor', 'Data', 'Status']],
+    head: [['Tipo', 'Membro', 'Descrição', 'Valor', 'Data', 'Verificação']],
     body: data.map(item => [
       item.tipo,
       item.membro,
