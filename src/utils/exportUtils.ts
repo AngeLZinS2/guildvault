@@ -8,7 +8,7 @@ type TransactionForExport = {
   descricao: string;
   valor: string;
   data: string;
-  status: string;
+  verificado: string;
 };
 
 export const exportToExcel = (data: TransactionForExport[], fileName: string) => {
@@ -35,8 +35,6 @@ export const exportToPDF = async (data: TransactionForExport[], fileName: string
   doc.setFontSize(11);
   doc.text(`Exportado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
   
-  // Add logo or other header items if needed
-  
   // Generate table
   autoTable(doc, {
     head: [['Tipo', 'Membro', 'Descrição', 'Valor', 'Data', 'Status']],
@@ -46,7 +44,7 @@ export const exportToPDF = async (data: TransactionForExport[], fileName: string
       item.descricao,
       item.valor,
       item.data,
-      item.status
+      item.verificado
     ]),
     startY: 40,
     styles: { fontSize: 10, cellPadding: 3 },

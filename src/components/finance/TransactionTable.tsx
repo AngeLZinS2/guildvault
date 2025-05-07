@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Search, FileText, ArrowUpCircle, ArrowDownCircle, AlertCircle, Info, Check, X, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { FinanceStatus } from "@/integrations/supabase/client";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
 import { 
   DropdownMenu,
@@ -16,6 +15,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Transaction {
   id: string;
@@ -26,6 +33,7 @@ interface Transaction {
   date: string;
   verified: boolean;
   proof_url?: string | null;
+  verifier_name?: string;
 }
 
 interface TransactionTableProps {
@@ -97,7 +105,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       descricao: transaction.description || '-',
       valor: `${transaction.type === 'deposit' ? '+' : '-'}$${transaction.amount.toLocaleString()}`,
       data: formatDate(transaction.date),
-      verificado: transaction.verified ? 'Sim' : 'Não'
+      verificado: transaction.verified ? 'Verificado' : 'Pendente'
     }));
 
     const fileName = `transacoes-financeiras-${new Date().toISOString().split('T')[0]}`;
@@ -155,23 +163,23 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-secondary border-b">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Tipo</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Membro</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Descrição</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Valor</th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Data</th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Verificado</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Membro</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-center">Data</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover:bg-primary/5">
-                      <td className="px-4 py-3">
+                    <TableRow key={transaction.id}>
+                      <TableCell>
                         <Badge variant="outline" className={transaction.type === 'deposit' ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}>
                           <span className="flex items-center text-xs">
                             {transaction.type === 'deposit' ? (
@@ -185,18 +193,18 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             )}
                           </span>
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{transaction.member_name}</td>
-                      <td className="px-4 py-3 text-sm max-w-[200px] truncate">{transaction.description}</td>
-                      <td className={`px-4 py-3 text-right text-sm font-medium ${
+                      </TableCell>
+                      <TableCell>{transaction.member_name}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{transaction.description}</TableCell>
+                      <TableCell className={`text-right font-medium ${
                         transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'
                       }`}>
                         {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         {transaction.date ? formatDate(transaction.date) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         {transaction.verified ? (
                           <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
                             Verificado
@@ -206,8 +214,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             Pendente
                           </Badge>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button 
                             variant="ghost" 
@@ -230,12 +238,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             <Info className="h-3 w-3 mr-1" /> Detalhes
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12">
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
                       <AlertCircle className="h-10 w-10 text-gray-500 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-300 mb-1">Nenhuma transação encontrada</h3>
                       <p className="text-gray-400">
@@ -244,11 +252,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                           : "Tente ajustar seus filtros de pesquisa"
                         }
                       </p>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
         {filteredTransactions.length > 0 && (
@@ -302,14 +310,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
                 
                 <div>
-                  <p className="text-sm text-gray-400">Verificado</p>
+                  <p className="text-sm text-gray-400">Status</p>
                   {selectedTransaction.verified ? (
                     <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-500">
-                      Sim
+                      Verificado
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
-                      Não
+                      Pendente
                     </Badge>
                   )}
                 </div>
@@ -336,6 +344,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <p className="text-sm text-gray-400">Descrição</p>
                 <p className="font-medium">{selectedTransaction.description || "Sem descrição"}</p>
               </div>
+              
+              {selectedTransaction.verified && selectedTransaction.verifier_name && (
+                <div>
+                  <p className="text-sm text-gray-400">Verificado por</p>
+                  <p className="font-medium">{selectedTransaction.verifier_name}</p>
+                </div>
+              )}
               
               <div>
                 <p className="text-sm text-gray-400">ID da Transação</p>
