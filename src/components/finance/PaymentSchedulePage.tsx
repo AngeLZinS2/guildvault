@@ -1,8 +1,12 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, AlertCircle, Plus } from "lucide-react";
+import { Calendar, AlertCircle, Plus, Edit } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { updatePaymentSchedule } from "@/services/financeService";
 
 interface Payment {
   id: string;
@@ -23,6 +27,59 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
   isAddPaymentOpen,
   setIsAddPaymentOpen,
 }) => {
+  const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
+  const [currentPayment, setCurrentPayment] = useState<Payment | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    amount: "",
+    dueDate: "",
+    members: "",
+  });
+
+  const handleEditPayment = (payment: Payment) => {
+    setCurrentPayment(payment);
+    setEditForm({
+      title: payment.title,
+      amount: payment.amount.toString(),
+      dueDate: payment.due_date.split('T')[0], // Format date for input
+      members: payment.members.join(", "),
+    });
+    setIsEditPaymentOpen(true);
+  };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm({
+      ...editForm,
+      [e.target.id]: e.target.value,
+    });
+  };
+
+  const handleSubmitEdit = async () => {
+    if (!currentPayment) return;
+    
+    if (!editForm.title || !editForm.amount || !editForm.dueDate) {
+      return; // Basic validation
+    }
+
+    const membersList = editForm.members
+      .split(",")
+      .map((member) => member.trim())
+      .filter((member) => member !== "");
+
+    const updatedPayment = {
+      title: editForm.title,
+      amount: Number(editForm.amount),
+      due_date: editForm.dueDate,
+      members: membersList.length > 0 ? membersList : currentPayment.members,
+    };
+
+    const { success } = await updatePaymentSchedule(currentPayment.id, updatedPayment);
+    
+    if (success) {
+      setIsEditPaymentOpen(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -68,8 +125,13 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
                       <Button variant="ghost" size="sm" className="h-8 px-2 text-yellow-500">
                         <AlertCircle className="h-4 w-4 mr-1" /> Lembrar
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 px-2">
-                        Editar
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2"
+                        onClick={() => handleEditPayment(payment)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" /> Editar
                       </Button>
                     </div>
                   </div>
@@ -93,6 +155,67 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
           </div>
         )}
       </CardContent>
+      
+      {/* Edit Payment Dialog */}
+      <Dialog open={isEditPaymentOpen} onOpenChange={setIsEditPaymentOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Pagamento</DialogTitle>
+            <DialogDescription>
+              Altere os detalhes do pagamento agendado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="title" className="text-right">Título</Label>
+              <Input
+                id="title"
+                value={editForm.title}
+                onChange={handleEditFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">Valor</Label>
+              <Input
+                id="amount"
+                type="number"
+                value={editForm.amount}
+                onChange={handleEditFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dueDate" className="text-right">Vencimento</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={editForm.dueDate}
+                onChange={handleEditFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="members" className="text-right">Membros</Label>
+              <Input
+                id="members"
+                placeholder="Membros separados por vírgula"
+                value={editForm.members}
+                onChange={handleEditFormChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditPaymentOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmitEdit}>
+              Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
