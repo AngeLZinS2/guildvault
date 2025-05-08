@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
@@ -14,6 +13,7 @@ import {
 import { fetchMembers } from "@/services/memberService";
 import { MemberData } from "@/types";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Import new componentized parts
 import { FinanceHeader } from "@/components/finance/FinanceHeader";
@@ -39,6 +39,9 @@ export default function Finances() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
 
   const [depositForm, setDepositForm] = useState({
     amount: "",
@@ -104,11 +107,83 @@ export default function Finances() {
     loadData();
   }, []);
 
-  const handleFileUpload = () => {
-    toast({
-      title: "Comprovante enviado",
-      description: "O comprovante foi anexado com sucesso",
-    });
+  const handleFileUpload = async (file: File | null) => {
+    if (!file) {
+      setSelectedFile(null);
+      setUploadedFilePath(null);
+      return;
+    }
+
+    setSelectedFile(file);
+
+    try {
+      // Check if file is within size limit (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "O tamanho máximo permitido é 10MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create a storage bucket for finance proofs if it doesn't exist
+      // Note: This would normally be done through SQL migrations
+      // For this example, we'll handle it in the frontend
+      
+      // Generate a unique filename to prevent collisions
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `finance_proofs/${fileName}`;
+      
+      // Upload the file to Supabase storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('finance_proofs')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        
+        // Handle specific error for bucket not found
+        if (uploadError.message?.includes('bucket not found')) {
+          toast({
+            title: "Erro no upload",
+            description: "Bucket de armazenamento não encontrado. Por favor, configure o armazenamento no Supabase.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Erro no upload",
+            description: uploadError.message,
+            variant: "destructive"
+          });
+        }
+        
+        return;
+      }
+      
+      // Get public URL for the file
+      const { data: { publicUrl } } = supabase.storage
+        .from('finance_proofs')
+        .getPublicUrl(filePath);
+        
+      setUploadedFilePath(publicUrl);
+      
+      toast({
+        title: "Comprovante enviado",
+        description: "O comprovante foi anexado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error handling file upload:", error);
+      toast({
+        title: "Erro no upload",
+        description: "Ocorreu um erro ao processar o upload",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDepositFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -170,7 +245,7 @@ export default function Finances() {
       amount: Number(depositForm.amount),
       member_id: depositForm.member,
       description: depositForm.description,
-      proof_url: null
+      proof_url: uploadedFilePath
     };
 
     const { success } = await addFinanceRecord(newTransaction);
@@ -183,6 +258,8 @@ export default function Finances() {
         description: ""
       });
       
+      setSelectedFile(null);
+      setUploadedFilePath(null);
       setIsAddDepositOpen(false);
     }
   };
@@ -202,7 +279,7 @@ export default function Finances() {
       amount: Number(withdrawalForm.amount),
       member_id: withdrawalForm.member,
       description: withdrawalForm.description || withdrawalForm.reason,
-      proof_url: null
+      proof_url: uploadedFilePath
     };
 
     const { success } = await addFinanceRecord(newTransaction);
@@ -216,6 +293,8 @@ export default function Finances() {
         description: ""
       });
       
+      setSelectedFile(null);
+      setUploadedFilePath(null);
       setIsAddWithdrawalOpen(false);
     }
   };
