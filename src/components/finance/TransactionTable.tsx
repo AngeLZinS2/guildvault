@@ -209,18 +209,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             variant="ghost" 
                             size="sm" 
                             className="h-7 px-2 text-xs"
-                            onClick={() => handleVerificationOpen(transaction)}
-                          >
-                            {transaction.verified ? (
-                              <>Reverter</>
-                            ) : (
-                              <><Check className="h-3 w-3 mr-1" /> Verificar</>
-                            )}
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-xs"
                             onClick={() => showDetails(transaction)}
                           >
                             <Info className="h-3 w-3 mr-1" /> Detalhes
@@ -361,6 +349,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               )}
               
               <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" size="sm" onClick={() => setDetailsOpen(false)}>Fechar</Button>
                 <Button 
                   variant={selectedTransaction.verified ? "destructive" : "default"}
                   size="sm"
@@ -371,7 +360,6 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 >
                   {selectedTransaction.verified ? "Reverter verificação" : "Verificar"}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setDetailsOpen(false)}>Fechar</Button>
               </div>
             </div>
           )}
