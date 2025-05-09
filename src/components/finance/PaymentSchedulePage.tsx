@@ -2,11 +2,12 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, AlertCircle, Plus, Edit } from "lucide-react";
+import { Calendar, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updatePaymentSchedule } from "@/services/financeService";
+import { updatePaymentSchedule, deletePaymentSchedule } from "@/services/financeService";
+import { toast } from "@/components/ui/use-toast";
 
 interface Payment {
   id: string;
@@ -28,6 +29,7 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
   setIsAddPaymentOpen,
 }) => {
   const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [currentPayment, setCurrentPayment] = useState<Payment | null>(null);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -47,6 +49,26 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
     setIsEditPaymentOpen(true);
   };
 
+  const handleDeletePayment = (payment: Payment) => {
+    setCurrentPayment(payment);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!currentPayment) return;
+    
+    const { success } = await deletePaymentSchedule(currentPayment.id);
+    
+    if (success) {
+      toast({
+        title: "Pagamento removido",
+        description: "O pagamento foi removido com sucesso."
+      });
+      setIsDeleteConfirmOpen(false);
+      // The parent component should refresh the payment schedule list
+    }
+  };
+
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditForm({
       ...editForm,
@@ -58,7 +80,12 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
     if (!currentPayment) return;
     
     if (!editForm.title || !editForm.amount || !editForm.dueDate) {
-      return; // Basic validation
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
     }
 
     const membersList = editForm.members
@@ -77,6 +104,7 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
     
     if (success) {
       setIsEditPaymentOpen(false);
+      // The parent component should refresh the payment schedule list
     }
   };
 
@@ -132,6 +160,14 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
                         onClick={() => handleEditPayment(payment)}
                       >
                         <Edit className="h-4 w-4 mr-1" /> Editar
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 text-red-500"
+                        onClick={() => handleDeletePayment(payment)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Excluir
                       </Button>
                     </div>
                   </div>
@@ -212,6 +248,26 @@ export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
             </Button>
             <Button onClick={handleSubmitEdit}>
               Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>
