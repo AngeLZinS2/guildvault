@@ -54,7 +54,7 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         guild: {
-          primary: "#1EAEDB", // Alterado de roxo para azul
+          primary: "var(--guild-primary-color)", // Use CSS variable
           secondary: "#ff6b35",
           dark: "#121420",
           light: "#e2e8f0",
@@ -77,8 +77,8 @@ export default {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 3px 0 rgba(30, 174, 219, 0.2)" }, // Atualizado para azul
-          "50%": { boxShadow: "0 0 12px 4px rgba(30, 174, 219, 0.4)" }, // Atualizado para azul
+          "0%, 100%": { boxShadow: "0 0 3px 0 rgba(var(--guild-primary-color), 0.2)" },
+          "50%": { boxShadow: "0 0 12px 4px rgba(var(--guild-primary-color), 0.4)" },
         },
       },
       animation: {

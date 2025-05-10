@@ -33,11 +33,18 @@ export function ColorPersonalization() {
   });
 
   const applyTheme = (themeClass: string) => {
+    // Find the selected color object
+    const selectedTheme = COLOR_OPTIONS.find(color => color.class === themeClass);
+    if (!selectedTheme) return;
+    
     // Remove all theme classes
     document.documentElement.classList.remove(...COLOR_OPTIONS.map(c => c.class));
     
     // Add the selected theme class
     document.documentElement.classList.add(themeClass);
+    
+    // Update CSS variable for guild-primary in HTML root element
+    document.documentElement.style.setProperty('--guild-primary-color', selectedTheme.primary);
     
     // Save to localStorage
     localStorage.setItem('guild-theme', themeClass);

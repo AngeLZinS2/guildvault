@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,31 +33,38 @@
     --ring: 198 78% 49%; /* Blue */
 
     --radius: 0.5rem;
+    
+    --guild-primary-color: #1EAEDB; /* Default Blue */
   }
 
   .theme-purple {
     --primary: 264 68% 75%; /* Purple */
     --ring: 264 68% 75%; /* Purple */
+    --guild-primary-color: #9b87f5;
   }
 
   .theme-green {
     --primary: 158 64% 40%; /* Green */
     --ring: 158 64% 40%; /* Green */
+    --guild-primary-color: #10B981;
   }
 
   .theme-red {
     --primary: 0 84% 60%; /* Red */
     --ring: 0 84% 60%; /* Red */
+    --guild-primary-color: #ef4444;
   }
 
   .theme-orange {
     --primary: 24 95% 53%; /* Orange */
     --ring: 24 95% 53%; /* Orange */
+    --guild-primary-color: #F97316;
   }
 
   .theme-pink {
     --primary: 330 81% 60%; /* Pink */
     --ring: 330 81% 60%; /* Pink */
+    --guild-primary-color: #EC4899;
   }
 }
 
@@ -98,7 +104,29 @@
   }
 
   .glow-border {
-    box-shadow: 0 0 5px 0px theme('colors.guild.primary');
+    box-shadow: 0 0 5px 0px var(--guild-primary-color);
+  }
+  
+  /* Add a class for elements that should use the primary color */
+  .guild-primary-bg {
+    background-color: var(--guild-primary-color);
+  }
+  
+  .guild-primary-text {
+    color: var(--guild-primary-color);
+  }
+  
+  .guild-primary-border {
+    border-color: var(--guild-primary-color);
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 3px 0 rgba(var(--guild-primary-color), 0.2); }
+    50% { box-shadow: 0 0 12px 4px rgba(var(--guild-primary-color), 0.4); }
   }
 }
 
