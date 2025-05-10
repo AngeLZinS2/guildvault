@@ -1,5 +1,6 @@
 
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -54,7 +55,7 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         guild: {
-          primary: "var(--guild-primary-color)", // Use CSS variable
+          primary: "rgb(var(--guild-primary-rgb) / <alpha-value>)", // Updated to use RGB format with alpha support
           secondary: "#ff6b35",
           dark: "#121420",
           light: "#e2e8f0",
@@ -77,8 +78,8 @@ export default {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 3px 0 rgba(var(--guild-primary-color), 0.2)" },
-          "50%": { boxShadow: "0 0 12px 4px rgba(var(--guild-primary-color), 0.4)" },
+          "0%, 100%": { boxShadow: "0 0 3px 0 rgb(var(--guild-primary-rgb) / 0.2)" },
+          "50%": { boxShadow: "0 0 12px 4px rgb(var(--guild-primary-rgb) / 0.4)" },
         },
       },
       animation: {
@@ -91,5 +92,16 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // Add a plugin to handle the guild-primary color with opacity
+    plugin(function({ addUtilities }) {
+      const newUtilities = {
+        '.guild-primary-shadow': {
+          'box-shadow': '0 0 5px 0px rgb(var(--guild-primary-rgb) / 0.7)',
+        },
+      }
+      addUtilities(newUtilities)
+    }),
+  ],
 } satisfies Config;

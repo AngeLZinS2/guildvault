@@ -13,16 +13,17 @@ import { toast } from '@/hooks/use-toast';
 type ThemeColor = {
   name: string;
   primary: string;
+  rgb: string;
   class: string;
 }
 
 const COLOR_OPTIONS: ThemeColor[] = [
-  { name: "Azul", primary: "#1EAEDB", class: "theme-blue" },
-  { name: "Roxo", primary: "#9b87f5", class: "theme-purple" },
-  { name: "Verde", primary: "#10B981", class: "theme-green" },
-  { name: "Vermelho", primary: "#ef4444", class: "theme-red" },
-  { name: "Laranja", primary: "#F97316", class: "theme-orange" },
-  { name: "Rosa", primary: "#EC4899", class: "theme-pink" },
+  { name: "Azul", primary: "#1EAEDB", rgb: "30 174 219", class: "theme-blue" },
+  { name: "Roxo", primary: "#9b87f5", rgb: "155 135 245", class: "theme-purple" },
+  { name: "Verde", primary: "#10B981", rgb: "16 185 129", class: "theme-green" },
+  { name: "Vermelho", primary: "#ef4444", rgb: "239 68 68", class: "theme-red" },
+  { name: "Laranja", primary: "#F97316", rgb: "249 115 22", class: "theme-orange" },
+  { name: "Rosa", primary: "#EC4899", rgb: "236 72 153", class: "theme-pink" },
 ];
 
 export function ColorPersonalization() {
@@ -43,8 +44,9 @@ export function ColorPersonalization() {
     // Add the selected theme class
     document.documentElement.classList.add(themeClass);
     
-    // Update CSS variable for guild-primary in HTML root element
+    // Update CSS variables in HTML root element
     document.documentElement.style.setProperty('--guild-primary-color', selectedTheme.primary);
+    document.documentElement.style.setProperty('--guild-primary-rgb', selectedTheme.rgb);
     
     // Save to localStorage
     localStorage.setItem('guild-theme', themeClass);

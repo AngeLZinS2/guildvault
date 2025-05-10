@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,36 +36,42 @@
     --radius: 0.5rem;
     
     --guild-primary-color: #1EAEDB; /* Default Blue */
+    --guild-primary-rgb: 30 174 219; /* RGB values for Default Blue */
   }
 
   .theme-purple {
     --primary: 264 68% 75%; /* Purple */
     --ring: 264 68% 75%; /* Purple */
     --guild-primary-color: #9b87f5;
+    --guild-primary-rgb: 155 135 245; /* RGB values for Purple */
   }
 
   .theme-green {
     --primary: 158 64% 40%; /* Green */
     --ring: 158 64% 40%; /* Green */
     --guild-primary-color: #10B981;
+    --guild-primary-rgb: 16 185 129; /* RGB values for Green */
   }
 
   .theme-red {
     --primary: 0 84% 60%; /* Red */
     --ring: 0 84% 60%; /* Red */
     --guild-primary-color: #ef4444;
+    --guild-primary-rgb: 239 68 68; /* RGB values for Red */
   }
 
   .theme-orange {
     --primary: 24 95% 53%; /* Orange */
     --ring: 24 95% 53%; /* Orange */
     --guild-primary-color: #F97316;
+    --guild-primary-rgb: 249 115 22; /* RGB values for Orange */
   }
 
   .theme-pink {
     --primary: 330 81% 60%; /* Pink */
     --ring: 330 81% 60%; /* Pink */
     --guild-primary-color: #EC4899;
+    --guild-primary-rgb: 236 72 153; /* RGB values for Pink */
   }
 }
 
@@ -84,7 +91,8 @@
 
 @layer components {
   .guild-card {
-    @apply relative bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/20 rounded-lg shadow-lg overflow-hidden animate-pulse-glow;
+    @apply relative bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/20 rounded-lg shadow-lg overflow-hidden;
+    animation: pulse-glow 3s ease-in-out infinite;
   }
   
   .guild-input {
@@ -104,7 +112,7 @@
   }
 
   .glow-border {
-    box-shadow: 0 0 5px 0px var(--guild-primary-color);
+    @apply guild-primary-shadow;
   }
   
   /* Add a class for elements that should use the primary color */
@@ -118,15 +126,6 @@
   
   .guild-primary-border {
     border-color: var(--guild-primary-color);
-  }
-  
-  .animate-pulse-glow {
-    animation: pulse-glow 3s ease-in-out infinite;
-  }
-  
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 3px 0 rgba(var(--guild-primary-color), 0.2); }
-    50% { box-shadow: 0 0 12px 4px rgba(var(--guild-primary-color), 0.4); }
   }
 }
 

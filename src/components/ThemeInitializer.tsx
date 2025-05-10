@@ -20,17 +20,21 @@ export const ThemeInitializer = () => {
     document.documentElement.classList.add(savedTheme);
     
     // Update CSS variable for guild-primary in HTML root element
-    const themeColor = {
-      'theme-blue': '#1EAEDB',
-      'theme-purple': '#9b87f5',
-      'theme-green': '#10B981',
-      'theme-red': '#ef4444',
-      'theme-orange': '#F97316',
-      'theme-pink': '#EC4899'
-    }[savedTheme] || '#1EAEDB';
+    const themeColors = {
+      'theme-blue': { hex: '#1EAEDB', rgb: '30 174 219' },
+      'theme-purple': { hex: '#9b87f5', rgb: '155 135 245' },
+      'theme-green': { hex: '#10B981', rgb: '16 185 129' },
+      'theme-red': { hex: '#ef4444', rgb: '239 68 68' },
+      'theme-orange': { hex: '#F97316', rgb: '249 115 22' },
+      'theme-pink': { hex: '#EC4899', rgb: '236 72 153' }
+    };
     
-    // Update the guild.primary color in the CSS
-    document.documentElement.style.setProperty('--guild-primary-color', themeColor);
+    const themeColor = themeColors[savedTheme] || themeColors['theme-blue'];
+    
+    // Update the guild primary color in the CSS
+    document.documentElement.style.setProperty('--guild-primary-color', themeColor.hex);
+    // Update the RGB values for use with opacity modifiers
+    document.documentElement.style.setProperty('--guild-primary-rgb', themeColor.rgb);
   }, []);
   
   return null; // This component doesn't render anything
