@@ -16,6 +16,7 @@ export type Item = {
   property_id?: string;
   name: string;
   quantity: number;
+  icon_url?: string | null;
   created_at?: string;
 }
 
@@ -26,6 +27,40 @@ export type Transaction = {
   amount: number;
   date: string;
 }
+
+// Upload item icon to Supabase Storage
+export const uploadItemIcon = async (file: File): Promise<string | null> => {
+  try {
+    // Create a unique file name
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Upload to Supabase storage
+    const { data, error } = await supabase
+      .storage
+      .from('item-icons')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    // Get public URL for the uploaded file
+    const { data: urlData } = supabase
+      .storage
+      .from('item-icons')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
+  } catch (error: any) {
+    console.error("Erro ao fazer upload do ícone:", error.message);
+    return null;
+  }
+};
 
 export const fetchProperties = async () => {
   try {
@@ -75,7 +110,8 @@ export const addItemToProperty = async (propertyId: string, item: Omit<Item, 'id
       .insert({
         property_id: propertyId,
         name: item.name,
-        quantity: item.quantity
+        quantity: item.quantity,
+        icon_url: item.icon_url || null
       })
       .select()
       .single();

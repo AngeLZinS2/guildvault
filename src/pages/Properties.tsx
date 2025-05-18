@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Package, Search, Plus, Building, Shield, Warehouse, Loader2 } from "lucide-react";
+import { Home, Package, Search, Plus, Building, Shield, Warehouse, Loader2, Upload, Image } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   addPropertyTransaction, 
   fetchPropertyTransactions,
   addItemToProperty,
+  uploadItemIcon,
   updatePropertyItem,
   deletePropertyItem,
   Property,
@@ -29,6 +30,7 @@ export default function Properties() {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [iconUploading, setIconUploading] = useState(false);
   
   // Estado para nova propriedade
   const [newPropertyNumber, setNewPropertyNumber] = useState("");
@@ -76,6 +78,59 @@ export default function Properties() {
     const result = await fetchPropertyTransactions(propertyId);
     if (result.success) {
       setPropertyTransactions(result.data);
+    }
+  };
+
+  // Handle icon upload for new item
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>, isNewProperty: boolean = false) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check if file is an image
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Erro no upload",
+        description: "Por favor, selecione uma imagem.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check file size (max 500KB)
+    if (file.size > 500 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo para ícones é de 500KB.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIconUploading(true);
+    
+    try {
+      const iconUrl = await uploadItemIcon(file);
+      
+      if (iconUrl) {
+        if (isNewProperty) {
+          setNewItem(prev => ({ ...prev, icon_url: iconUrl }));
+        } else {
+          setNewItem(prev => ({ ...prev, icon_url: iconUrl }));
+        }
+        
+        toast({
+          title: "Ícone carregado",
+          description: "O ícone foi carregado com sucesso."
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível carregar o ícone.",
+        variant: "destructive"
+      });
+    } finally {
+      setIconUploading(false);
     }
   };
 
@@ -307,37 +362,80 @@ export default function Properties() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Itens Iniciais</label>
                 <div className="border border-guild-primary/20 rounded-md p-4 bg-guild-dark/50">
-                  <div className="flex gap-2 mb-2">
-                    <Input 
-                      placeholder="Nome do Item" 
-                      className="guild-input flex-1" 
-                      value={newItem.name}
-                      onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                    />
-                    <Input 
-                      type="number" 
-                      placeholder="Qtd" 
-                      className="guild-input w-24" 
-                      min="1"
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="guild-button-ghost"
-                      onClick={addItemToPropertyList}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                  <div className="flex flex-col gap-2 mb-2">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Nome do Item" 
+                        className="guild-input flex-1" 
+                        value={newItem.name}
+                        onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                      />
+                      <Input 
+                        type="number" 
+                        placeholder="Qtd" 
+                        className="guild-input w-24" 
+                        min="1"
+                        value={newItem.quantity}
+                        onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <label htmlFor="icon-upload" className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md cursor-pointer border 
+                          ${newItem.icon_url ? 'border-guild-primary/50 bg-guild-primary/10' : 'border-dashed border-gray-500'}`}>
+                          {newItem.icon_url ? 
+                            <Image className="h-4 w-4 text-guild-primary" /> : 
+                            <Upload className="h-4 w-4" />
+                          }
+                          <span className="text-sm">{newItem.icon_url ? 'Ícone carregado' : 'Upload de ícone (16x16)'}</span>
+                        </label>
+                        <input
+                          id="icon-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleIconUpload(e, true)}
+                          disabled={iconUploading}
+                        />
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="guild-button-ghost"
+                        onClick={addItemToPropertyList}
+                        disabled={!newItem.name || iconUploading}
+                      >
+                        {iconUploading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
+                  
                   {newPropertyItems.length > 0 && (
                     <div className="mt-3 border-t border-guild-primary/10 pt-2">
                       <p className="text-sm font-medium mb-2">Itens adicionados:</p>
                       <div className="space-y-1 max-h-24 overflow-y-auto">
                         {newPropertyItems.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span>{item.name}</span>
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              {item.icon_url && (
+                                <img 
+                                  src={item.icon_url} 
+                                  alt={item.name} 
+                                  className="w-4 h-4 object-contain"
+                                  onError={(e) => {
+                                    // Replace with a placeholder if image fails to load
+                                    (e.target as HTMLImageElement).src = 'placeholder.svg';
+                                  }}
+                                />
+                              )}
+                              <span>{item.name}</span>
+                            </div>
                             <span className="text-gray-400">x{item.quantity}</span>
                           </div>
                         ))}
@@ -423,8 +521,20 @@ export default function Properties() {
                 <p className="text-sm text-gray-400 mb-2">Itens: {property.items?.length || 0}</p>
                 <div className="space-y-2">
                   {property.items?.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
-                      <span>{item.name}</span>
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        {item.icon_url && (
+                          <img 
+                            src={item.icon_url} 
+                            alt={item.name} 
+                            className="w-4 h-4 object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'placeholder.svg';
+                            }}
+                          />
+                        )}
+                        <span>{item.name}</span>
+                      </div>
                       <span className="text-gray-400">x{item.quantity}</span>
                     </div>
                   ))}
@@ -512,10 +622,67 @@ export default function Properties() {
                               onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
                             />
                           </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Ícone</label>
+                            <div className="relative">
+                              <label htmlFor="item-icon-upload" className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md w-full cursor-pointer border 
+                                ${newItem.icon_url ? 'border-guild-primary/50 bg-guild-primary/10' : 'border-dashed border-gray-500'}`}>
+                                {newItem.icon_url ? (
+                                  <div className="flex items-center gap-2">
+                                    <Image className="h-4 w-4 text-guild-primary" />
+                                    <span className="text-sm">Ícone carregado</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <Upload className="h-4 w-4" />
+                                    <span className="text-sm">Upload de ícone (16x16)</span>
+                                  </div>
+                                )}
+                              </label>
+                              <input
+                                id="item-icon-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleIconUpload}
+                                disabled={iconUploading}
+                              />
+                            </div>
+                            {newItem.icon_url && (
+                              <div className="flex items-center justify-center mt-2">
+                                <img 
+                                  src={newItem.icon_url} 
+                                  alt="Ícone do item" 
+                                  className="w-8 h-8 object-contain border border-guild-primary/30 rounded p-1"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'placeholder.svg';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              Tamanho recomendado: 16x16px. Máx: 500KB.
+                            </p>
+                          </div>
                         </div>
                         <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>Cancelar</Button>
-                          <Button onClick={handleAddItemToProperty}>Adicionar</Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsAddItemDialogOpen(false)}
+                            className="guild-button-ghost"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button 
+                            onClick={handleAddItemToProperty}
+                            disabled={!newItem.name || iconUploading}
+                          >
+                            {iconUploading ? (
+                              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando...</>
+                            ) : (
+                              'Adicionar'
+                            )}
+                          </Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -543,7 +710,21 @@ export default function Properties() {
                               key={item.id}
                               className="border-b border-guild-primary/10 last:border-none hover:bg-guild-primary/5"
                             >
-                              <td className="px-4 py-3 text-sm">{item.name}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <div className="flex items-center gap-2">
+                                  {item.icon_url && (
+                                    <img 
+                                      src={item.icon_url} 
+                                      alt={item.name} 
+                                      className="w-4 h-4 object-contain"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'placeholder.svg';
+                                      }}
+                                    />
+                                  )}
+                                  {item.name}
+                                </div>
+                              </td>
                               <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
                               <td className="px-4 py-3 text-sm text-right">
                                 <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
