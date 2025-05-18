@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { LoginHeader } from "@/components/auth/LoginHeader";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,16 +34,8 @@ export default function Login() {
 
   return (
     <>
-      {/* Static Background Image */}
-      <div 
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
-        style={{ 
-          backgroundImage: `url('public/Fotos/Los-City.jpg')`,
-          // Add a dark overlay to ensure text remains readable
-          backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)'
-        }}
-      />
+      {/* Animated Background instead of static image */}
+      <AnimatedBackground />
       
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
