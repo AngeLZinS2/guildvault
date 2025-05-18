@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Package, Search, Plus, Building, Shield, Warehouse, Loader2, Upload, Image } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,15 +11,12 @@ import { toast } from "@/hooks/use-toast";
 import { 
   fetchProperties, 
   addPropertyWithItems, 
-  addPropertyTransaction, 
-  fetchPropertyTransactions,
   addItemToProperty,
   uploadItemIcon,
   updatePropertyItem,
   deletePropertyItem,
   Property,
   Item,
-  Transaction
 } from "@/services/propertyService";
 
 export default function Properties() {
@@ -39,15 +35,8 @@ export default function Properties() {
   const [newItem, setNewItem] = useState<Omit<Item, 'id' | 'property_id'>>({ name: "", quantity: 1 });
   const [newPropertyItems, setNewPropertyItems] = useState<Omit<Item, 'id' | 'property_id'>[]>([]);
   
-  // Estado para novos itens e transações
+  // Estado para novos itens
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
-  const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = useState(false);
-  const [newTransactionDescription, setNewTransactionDescription] = useState("");
-  const [newTransactionAmount, setNewTransactionAmount] = useState(0);
-  const [newTransactionType, setNewTransactionType] = useState<"deposit" | "withdrawal">("deposit");
-  
-  // Estado para transações da propriedade
-  const [propertyTransactions, setPropertyTransactions] = useState<Transaction[]>([]);
   
   useEffect(() => {
     loadProperties();
@@ -66,19 +55,6 @@ export default function Properties() {
       });
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    if (selectedProperty) {
-      loadPropertyTransactions(selectedProperty.id);
-    }
-  }, [selectedProperty]);
-
-  const loadPropertyTransactions = async (propertyId: string) => {
-    const result = await fetchPropertyTransactions(propertyId);
-    if (result.success) {
-      setPropertyTransactions(result.data);
-    }
   };
 
   // Handle icon upload for new item
@@ -238,44 +214,6 @@ export default function Properties() {
       
       // Reload properties to update the UI
       loadProperties();
-    }
-  };
-
-  // Adicionar nova transação
-  const handleAddTransaction = async () => {
-    if (!selectedProperty || !newTransactionDescription || newTransactionAmount <= 0) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos da transação corretamente",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const transaction: Omit<Transaction, 'id'> = {
-      property_id: selectedProperty.id,
-      description: newTransactionDescription,
-      amount: newTransactionType === "withdrawal" ? -Math.abs(newTransactionAmount) : Math.abs(newTransactionAmount),
-      date: new Date().toISOString()
-    };
-
-    const result = await addPropertyTransaction(transaction);
-    
-    if (result.success) {
-      toast({
-        title: "Transação registrada",
-        description: "Transação registrada com sucesso."
-      });
-      
-      setNewTransactionDescription("");
-      setNewTransactionAmount(0);
-      setNewTransactionType("deposit");
-      setIsAddTransactionDialogOpen(false);
-      
-      // Reload transactions
-      if (selectedProperty) {
-        loadPropertyTransactions(selectedProperty.id);
-      }
     }
   };
 
@@ -581,270 +519,164 @@ export default function Properties() {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="inventory">
-              <TabsList className="grid grid-cols-2 mb-6">
-                <TabsTrigger value="inventory">Inventário</TabsTrigger>
-                <TabsTrigger value="transactions">Transações</TabsTrigger>
-              </TabsList>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Itens no Baú</h3>
+                <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="guild-button-ghost">
+                      <Plus className="h-4 w-4 mr-1" /> Adicionar Item
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Item</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Nome do Item</label>
+                        <Input 
+                          placeholder="Ex: Lockpick" 
+                          className="guild-input" 
+                          value={newItem.name}
+                          onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Quantidade</label>
+                        <Input 
+                          type="number" 
+                          placeholder="Quantidade" 
+                          className="guild-input" 
+                          min="1"
+                          value={newItem.quantity}
+                          onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Ícone</label>
+                        <div className="relative">
+                          <label htmlFor="item-icon-upload" className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md w-full cursor-pointer border 
+                            ${newItem.icon_url ? 'border-guild-primary/50 bg-guild-primary/10' : 'border-dashed border-gray-500'}`}>
+                            {newItem.icon_url ? (
+                              <div className="flex items-center gap-2">
+                                <Image className="h-4 w-4 text-guild-primary" />
+                                <span className="text-sm">Ícone carregado</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Upload className="h-4 w-4" />
+                                <span className="text-sm">Upload de ícone (16x16)</span>
+                              </div>
+                            )}
+                          </label>
+                          <input
+                            id="item-icon-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleIconUpload}
+                            disabled={iconUploading}
+                          />
+                        </div>
+                        {newItem.icon_url && (
+                          <div className="flex items-center justify-center mt-2">
+                            <img 
+                              src={newItem.icon_url} 
+                              alt="Ícone do item" 
+                              className="w-8 h-8 object-contain border border-guild-primary/30 rounded p-1"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'placeholder.svg';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Tamanho recomendado: 16x16px. Máx: 500KB.
+                        </p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsAddItemDialogOpen(false)}
+                        className="guild-button-ghost"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        onClick={handleAddItemToProperty}
+                        disabled={!newItem.name || iconUploading}
+                      >
+                        {iconUploading ? (
+                          <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando...</>
+                        ) : (
+                          'Adicionar'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
               
-              <TabsContent value="inventory">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Itens no Baú</h3>
-                    <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="guild-button-ghost">
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar Item
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Adicionar Item</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Nome do Item</label>
-                            <Input 
-                              placeholder="Ex: Lockpick" 
-                              className="guild-input" 
-                              value={newItem.name}
-                              onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Quantidade</label>
-                            <Input 
-                              type="number" 
-                              placeholder="Quantidade" 
-                              className="guild-input" 
-                              min="1"
-                              value={newItem.quantity}
-                              onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Ícone</label>
-                            <div className="relative">
-                              <label htmlFor="item-icon-upload" className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md w-full cursor-pointer border 
-                                ${newItem.icon_url ? 'border-guild-primary/50 bg-guild-primary/10' : 'border-dashed border-gray-500'}`}>
-                                {newItem.icon_url ? (
-                                  <div className="flex items-center gap-2">
-                                    <Image className="h-4 w-4 text-guild-primary" />
-                                    <span className="text-sm">Ícone carregado</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <Upload className="h-4 w-4" />
-                                    <span className="text-sm">Upload de ícone (16x16)</span>
-                                  </div>
-                                )}
-                              </label>
-                              <input
-                                id="item-icon-upload"
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleIconUpload}
-                                disabled={iconUploading}
-                              />
-                            </div>
-                            {newItem.icon_url && (
-                              <div className="flex items-center justify-center mt-2">
+              <div className="bg-guild-dark/50 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-guild-primary/20">
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Item</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Quantidade</th>
+                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedProperty.items && selectedProperty.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                          Nenhum item encontrado nesta propriedade.
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedProperty.items && selectedProperty.items.map((item) => (
+                        <tr 
+                          key={item.id}
+                          className="border-b border-guild-primary/10 last:border-none hover:bg-guild-primary/5"
+                        >
+                          <td className="px-4 py-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              {item.icon_url && (
                                 <img 
-                                  src={newItem.icon_url} 
-                                  alt="Ícone do item" 
-                                  className="w-8 h-8 object-contain border border-guild-primary/30 rounded p-1"
+                                  src={item.icon_url} 
+                                  alt={item.name} 
+                                  className="w-4 h-4 object-contain"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = 'placeholder.svg';
                                   }}
                                 />
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tamanho recomendado: 16x16px. Máx: 500KB.
-                            </p>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setIsAddItemDialogOpen(false)}
-                            className="guild-button-ghost"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button 
-                            onClick={handleAddItemToProperty}
-                            disabled={!newItem.name || iconUploading}
-                          >
-                            {iconUploading ? (
-                              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando...</>
-                            ) : (
-                              'Adicionar'
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  
-                  <div className="bg-guild-dark/50 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-guild-primary/20">
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Item</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Quantidade</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedProperty.items && selectedProperty.items.length === 0 ? (
-                          <tr>
-                            <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                              Nenhum item encontrado nesta propriedade.
-                            </td>
-                          </tr>
-                        ) : (
-                          selectedProperty.items && selectedProperty.items.map((item) => (
-                            <tr 
-                              key={item.id}
-                              className="border-b border-guild-primary/10 last:border-none hover:bg-guild-primary/5"
+                              )}
+                              {item.name}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                              Editar
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-7 px-2 text-xs text-red-500"
+                              onClick={() => item.id && handleDeleteItem(item.id)}
                             >
-                              <td className="px-4 py-3 text-sm">
-                                <div className="flex items-center gap-2">
-                                  {item.icon_url && (
-                                    <img 
-                                      src={item.icon_url} 
-                                      alt={item.name} 
-                                      className="w-4 h-4 object-contain"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = 'placeholder.svg';
-                                      }}
-                                    />
-                                  )}
-                                  {item.name}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                                  Editar
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 px-2 text-xs text-red-500"
-                                  onClick={() => item.id && handleDeleteItem(item.id)}
-                                >
-                                  Remover
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="transactions">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">TDN de Haists</h3>
-                    
-                    <Dialog open={isAddTransactionDialogOpen} onOpenChange={setIsAddTransactionDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="guild-button-ghost">
-                          <Plus className="h-4 w-4 mr-1" /> Registrar Transação
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Registrar Transação</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Tipo</label>
-                            <Select value={newTransactionType} onValueChange={(value: "deposit" | "withdrawal") => setNewTransactionType(value)}>
-                              <SelectTrigger className="guild-input">
-                                <SelectValue placeholder="Selecionar tipo" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="deposit">Entrada (+)</SelectItem>
-                                <SelectItem value="withdrawal">Saída (-)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Descrição</label>
-                            <Input 
-                              placeholder="Ex: Fleeca Bank Heist" 
-                              className="guild-input" 
-                              value={newTransactionDescription}
-                              onChange={(e) => setNewTransactionDescription(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Valor ($)</label>
-                            <Input 
-                              type="number" 
-                              placeholder="Valor" 
-                              className="guild-input" 
-                              min="1"
-                              value={newTransactionAmount}
-                              onChange={(e) => setNewTransactionAmount(parseInt(e.target.value))}
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsAddTransactionDialogOpen(false)}>Cancelar</Button>
-                          <Button onClick={handleAddTransaction}>Registrar</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  
-                  <div className="bg-guild-dark/50 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-guild-primary/20">
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Descrição</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Valor</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Data</th>
+                              Remover
+                            </Button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {propertyTransactions.length === 0 ? (
-                          <tr>
-                            <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                              Nenhuma transação registrada para esta propriedade.
-                            </td>
-                          </tr>
-                        ) : (
-                          propertyTransactions.map((transaction) => (
-                            <tr 
-                              key={transaction.id} 
-                              className="border-b border-guild-primary/10 last:border-none hover:bg-guild-primary/5"
-                            >
-                              <td className="px-4 py-3 text-sm">{transaction.description}</td>
-                              <td className={`px-4 py-3 text-sm text-right ${
-                                transaction.amount < 0 ? 'text-red-500' : 'text-green-500'
-                              }`}>
-                                {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toLocaleString()}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                {new Date(transaction.date).toLocaleDateString()}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -20,14 +20,6 @@ export type Item = {
   created_at?: string;
 }
 
-export type Transaction = {
-  id: string;
-  property_id: string;
-  description: string;
-  amount: number;
-  date: string;
-}
-
 // Upload item icon to Supabase Storage
 export const uploadItemIcon = async (file: File): Promise<string | null> => {
   try {
@@ -196,43 +188,6 @@ export const deletePropertyItem = async (itemId: string) => {
     return { success: true };
   } catch (error: any) {
     console.error("Erro ao deletar item:", error.message);
-    return { success: false, error };
-  }
-};
-
-export const fetchPropertyTransactions = async (propertyId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('property_transactions')
-      .select('*')
-      .eq('property_id', propertyId);
-
-    if (error) {
-      throw error;
-    }
-
-    return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao buscar transações:", error.message);
-    return { success: false, error };
-  }
-};
-
-export const addPropertyTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-  try {
-    const { data, error } = await supabase
-      .from('property_transactions')
-      .insert(transaction)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao adicionar transação:", error.message);
     return { success: false, error };
   }
 };
