@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpCircle, ArrowDownCircle, Home, User, DollarSign, AlertTriangle, Plus, Loader2 } from "lucide-react";
@@ -120,16 +119,16 @@ export default function Dashboard() {
         const propertiesList = propertiesResult.data;
         setProperties(propertiesList);
         
-        // Calculate property types
-        const farms = propertiesList.filter(p => p.type === 'Farm').length;
-        const hqs = propertiesList.filter(p => p.type === 'HQ').length;
-        const warehouses = propertiesList.filter(p => p.type === 'Depósito').length;
+        // Calculate property types - Updated to match the actual type names in the database
+        const pequena = propertiesList.filter(p => p.type === 'Pequena').length;
+        const media = propertiesList.filter(p => p.type === 'Media').length;
+        const grande = propertiesList.filter(p => p.type === 'Grande').length;
         
         setPropertiesData({
           total: propertiesList.length,
-          farms,
-          hqs,
-          warehouses
+          farms: pequena, // Map farms to pequena
+          hqs: media,    // Map hqs to media
+          warehouses: grande // Map warehouses to grande
         });
       }
       
