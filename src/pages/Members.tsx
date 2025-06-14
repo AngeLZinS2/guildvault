@@ -17,6 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PaginationControls } from '@/components/members/PaginationControls';
 import { PaginationInfo } from '@/types';
 import { ColorPersonalization } from '@/components/ColorPersonalization';
+import { AdminManagement } from '@/components/admin/AdminManagement';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 type Member = {
   id: string;
@@ -40,6 +42,7 @@ const ITEMS_PER_PAGE = 10;
 
 const Members = () => {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAdminCheck();
   const [members, setMembers] = useState<Member[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -233,6 +236,13 @@ const Members = () => {
         </CardHeader>
         
         <CardContent className="pt-6">
+          {/* Mostrar gerenciamento de admins apenas para super admin */}
+          {isSuperAdmin && (
+            <div className="mb-8">
+              <AdminManagement />
+            </div>
+          )}
+          
           <div className="flex flex-col md:flex-row justify-between mb-6 space-y-4 md:space-y-0 md:space-x-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

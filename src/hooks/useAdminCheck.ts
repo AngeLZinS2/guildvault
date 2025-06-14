@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const useAdminCheck = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -22,8 +23,11 @@ export const useAdminCheck = () => {
 
           if (!error && profile) {
             setCurrentUser(profile);
-            // Usuário é admin se state_id for "00"
-            setIsAdmin(profile.state_id === '00');
+            // Super admin é somente o state_id "00"
+            const superAdmin = profile.state_id === '00';
+            setIsSuperAdmin(superAdmin);
+            // Admin regular inclui o super admin e usuários com role "admin"
+            setIsAdmin(superAdmin || profile.role === 'admin');
           }
         }
       } catch (error) {
@@ -43,5 +47,5 @@ export const useAdminCheck = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { isAdmin, loading, currentUser };
+  return { isAdmin, isSuperAdmin, loading, currentUser };
 };

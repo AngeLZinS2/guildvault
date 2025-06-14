@@ -29,7 +29,7 @@ export type VerificationData = {
   verification_notes?: string | null;
 }
 
-// Função para verificar se o usuário é admin
+// Função para verificar se o usuário é admin (incluindo super admin)
 const checkIsAdmin = async (): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -38,13 +38,14 @@ const checkIsAdmin = async (): Promise<boolean> => {
     
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('state_id')
+      .select('state_id, role')
       .eq('id', user.id)
       .single();
 
     if (error || !profile) return false;
     
-    return profile.state_id === '00';
+    // Admin se for super admin (state_id "00") ou tiver role "admin"
+    return profile.state_id === '00' || profile.role === 'admin';
   } catch (error) {
     console.error('Erro ao verificar status de admin:', error);
     return false;
