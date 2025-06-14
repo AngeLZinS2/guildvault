@@ -14,7 +14,7 @@ interface Member {
   id: string;
   name: string;
   state_id?: string;
-  email?: string;
+  alias_name?: string;
   role: string;
 }
 
@@ -27,7 +27,7 @@ interface EditMemberModalProps {
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
-  email: z.string().email({ message: 'Email inválido' }).optional().or(z.literal('')),
+  aliasName: z.string().optional().or(z.literal('')),
   role: z.string().min(1, { message: 'Selecione uma função' }),
   stateId: z.string().min(1, { message: 'State ID é obrigatório' }),
 });
@@ -42,7 +42,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: member?.name || '',
-      email: member?.email || '',
+      aliasName: member?.alias_name || '',
       role: member?.role || 'Membro',
       stateId: member?.state_id || '',
     },
@@ -52,7 +52,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
     if (member) {
       form.reset({
         name: member.name,
-        email: member.email || '',
+        aliasName: member.alias_name || '',
         role: member.role,
         stateId: member.state_id || '',
       });
@@ -69,6 +69,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
           name: data.name,
           role: data.role,
           state_id: data.stateId,
+          alias_name: data.aliasName || null,
         })
         .eq('id', member.id);
 
@@ -147,14 +148,13 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
             
             <FormField
               control={form.control}
-              name="email"
+              name="aliasName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-300">Email (opcional)</FormLabel>
+                  <FormLabel className="text-gray-300">Alias Name (opcional)</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="email@exemplo.com" 
-                      type="email" 
+                      placeholder="Nome alternativo ou apelido" 
                       className="bg-guild-dark/70 border-guild-primary/30 text-white" 
                       {...field} 
                     />
