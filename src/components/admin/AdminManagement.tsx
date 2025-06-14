@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Crown, Shield, User } from 'lucide-react';
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { PaginationControls } from '@/components/members/PaginationControls';
 import { PaginationInfo } from '@/types';
@@ -32,14 +32,19 @@ export const AdminManagement: React.FC = () => {
 
   const loadUsers = async () => {
     try {
+      console.log('Carregando usuários...');
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name, state_id, role')
         .neq('state_id', '00') // Excluir o super admin da lista
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na query:', error);
+        throw error;
+      }
       
+      console.log('Usuários carregados:', data);
       const userData = data || [];
       setUsers(userData);
       
@@ -66,44 +71,73 @@ export const AdminManagement: React.FC = () => {
   }, []);
 
   const toggleAdminRole = async (userId: string, currentRole: string) => {
+    console.log('=== INICIANDO TOGGLE ADMIN ===');
+    console.log('UserID:', userId);
+    console.log('Role atual:', currentRole);
+    
     setUpdating(userId);
     try {
       const newRole = currentRole === 'admin' ? 'Membro' : 'admin';
+      console.log('Nova role:', newRole);
       
-      console.log('Atualizando usuário:', userId, 'de', currentRole, 'para', newRole);
+      // Primeiro, vamos verificar se o usuário existe
+      const { data: userCheck, error: checkError } = await supabase
+        .from('profiles')
+        .select('id, name, role')
+        .eq('id', userId)
+        .single();
+        
+      if (checkError) {
+        console.error('Erro ao verificar usuário:', checkError);
+        throw new Error('Usuário não encontrado');
+      }
       
-      const { data, error } = await supabase
+      console.log('Usuário encontrado:', userCheck);
+      
+      // Agora vamos atualizar
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', userId)
-        .select();
+        .select('id, name, role');
 
-      if (error) {
-        console.error('Erro na atualização:', error);
-        throw error;
+      if (updateError) {
+        console.error('Erro na atualização:', updateError);
+        throw updateError;
       }
 
-      console.log('Atualização bem-sucedida:', data);
+      console.log('Dados atualizados:', updateData);
+
+      if (!updateData || updateData.length === 0) {
+        throw new Error('Nenhum registro foi atualizado');
+      }
 
       // Atualizar o estado local imediatamente
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
+      setUsers(prevUsers => {
+        const updatedUsers = prevUsers.map(user => 
           user.id === userId ? { ...user, role: newRole } : user
-        )
-      );
+        );
+        console.log('Estado local atualizado:', updatedUsers);
+        return updatedUsers;
+      });
 
       toast({
-        title: "Permissão atualizada",
-        description: `Usuário ${newRole === 'admin' ? 'promovido a' : 'removido de'} administrador.`,
+        title: "Permissão atualizada com sucesso!",
+        description: `${userCheck.name} ${newRole === 'admin' ? 'promovido a' : 'removido de'} administrador.`,
       });
 
       // Recarregar a lista para garantir sincronização
-      await loadUsers();
+      console.log('Recarregando lista...');
+      setTimeout(() => {
+        loadUsers();
+      }, 500);
+      
     } catch (error: any) {
-      console.error('Erro ao atualizar permissão:', error);
+      console.error('=== ERRO NO TOGGLE ADMIN ===');
+      console.error('Erro completo:', error);
       toast({
         title: "Erro ao atualizar permissão",
-        description: error.message,
+        description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
     } finally {
@@ -179,7 +213,10 @@ export const AdminManagement: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleAdminRole(user.id, user.role)}
+                            onClick={() => {
+                              console.log('Botão clicado para usuário:', user.name, 'ID:', user.id, 'Role:', user.role);
+                              toggleAdminRole(user.id, user.role);
+                            }}
                             disabled={updating === user.id}
                             className={`border-guild-primary/30 text-white ${
                               user.role === 'admin' 
