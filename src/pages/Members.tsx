@@ -30,6 +30,7 @@ type Member = {
   join_date: string;
   last_activity?: string;
   state_id?: string;
+  alias_name?: string;
   email?: string;
 };
 
@@ -305,7 +306,7 @@ const Members = () => {
                   <TableRow className="border-b border-guild-primary/20">
                     <TableHead className="text-gray-300">Nome</TableHead>
                     <TableHead className="text-gray-300">State ID</TableHead>
-                    <TableHead className="text-gray-300">Email</TableHead>
+                    <TableHead className="text-gray-300">Alias Name</TableHead>
                     <TableHead className="text-gray-300">Função</TableHead>
                     <TableHead className="text-gray-300">Status</TableHead>
                     <TableHead className="text-gray-300">Data de entrada</TableHead>
@@ -342,7 +343,7 @@ const Members = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-white">{member.state_id || '—'}</TableCell>
-                        <TableCell className="text-white">{member.email || '—'}</TableCell>
+                        <TableCell className="text-white">{member.alias_name || '—'}</TableCell>
                         <TableCell>
                           <Badge className={
                             member.role === 'Líder' ? 'bg-guild-primary text-white' : 
