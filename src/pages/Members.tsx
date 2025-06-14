@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, UserRound, UserCheck, UserX, Copy } from 'lucide-react';
+import { Search, UserRound, UserCheck, UserX, Copy, Crown } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import { addMemberWithAuth, fetchMembers, updateMemberStatus } from '@/services/memberService';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -70,6 +70,11 @@ const Members = () => {
       stateId: '',
     },
   });
+
+  // Check if user is admin (super admin or regular admin)
+  const isUserAdmin = (member: Member) => {
+    return member.state_id === '00' || member.role === 'admin';
+  };
 
   // Check if user is authenticated
   useEffect(() => {
@@ -316,16 +321,28 @@ const Members = () => {
                 ) : getCurrentPageItems().length > 0 ? (
                   getCurrentPageItems().map((member) => (
                     <TableRow key={member.id} className="border-b border-guild-primary/10 hover:bg-guild-primary/5">
-                      <TableCell className="text-white">{member.name}</TableCell>
+                      <TableCell className="text-white">
+                        <div className="flex items-center gap-2">
+                          {member.name}
+                          {isUserAdmin(member) && (
+                            <Crown 
+                              size={16} 
+                              className="text-yellow-500" 
+                              title={member.state_id === '00' ? 'Super Administrador' : 'Administrador'}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-white">{member.state_id || '—'}</TableCell>
                       <TableCell className="text-white">{member.email || '—'}</TableCell>
                       <TableCell>
                         <Badge className={
                           member.role === 'Líder' ? 'bg-guild-primary text-white' : 
                           member.role === 'Segurança' ? 'bg-red-500/80 text-white' : 
+                          member.role === 'admin' ? 'bg-yellow-500/80 text-white' :
                           'bg-gray-500/80 text-white'
                         }>
-                          {member.role}
+                          {member.role === 'admin' ? 'Administrador' : member.role}
                         </Badge>
                       </TableCell>
                       <TableCell>
