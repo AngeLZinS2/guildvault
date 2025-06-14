@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,99 +80,50 @@ export const AdminManagement: React.FC = () => {
       const newRole = currentRole === 'admin' ? 'Membro' : 'admin';
       console.log('Nova role:', newRole);
       
-      // Primeiro, vamos verificar se o usuário existe e obter informações do usuário atual
-      const { data: currentUser } = await supabase.auth.getUser();
-      console.log('Usuário atual logado:', currentUser.user?.id);
-      
-      const { data: userCheck, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, name, role, state_id')
-        .eq('id', userId)
-        .single();
-        
-      if (checkError) {
-        console.error('Erro ao verificar usuário:', checkError);
-        throw new Error('Usuário não encontrado');
-      }
-      
-      console.log('Usuário encontrado:', userCheck);
-      
-      // Tentar atualização com diferentes abordagens
-      console.log('Tentando atualização...');
-      
-      // Primeira tentativa: atualização simples
-      const { data: updateData, error: updateError, count } = await supabase
+      // Tentar atualização sem usar .single() para evitar erro PGRST116
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ role: newRole })
-        .eq('id', userId)
-        .select('*')
-        .single();
+        .eq('id', userId);
 
-      console.log('Resultado da atualização:');
-      console.log('Data:', updateData);
-      console.log('Error:', updateError);
-      console.log('Count:', count);
+      console.log('Erro de atualização:', updateError);
 
       if (updateError) {
         console.error('Erro na atualização:', updateError);
-        
-        // Se houver erro relacionado a RLS, tentar uma abordagem diferente
-        if (updateError.message.includes('row-level security') || updateError.message.includes('policy')) {
-          console.log('Possível problema de RLS detectado. Verificando permissões...');
-          
-          // Verificar se o usuário atual tem permissão de admin
-          const { data: currentUserProfile } = await supabase
-            .from('profiles')
-            .select('role, state_id')
-            .eq('id', currentUser.user?.id)
-            .single();
-            
-          console.log('Perfil do usuário atual:', currentUserProfile);
-          
-          if (!currentUserProfile || (currentUserProfile.role !== 'admin' && currentUserProfile.state_id !== '00')) {
-            throw new Error('Você não tem permissão para alterar roles de outros usuários');
-          }
-        }
-        
         throw updateError;
       }
 
-      if (!updateData) {
-        // Tentar verificar se a atualização realmente aconteceu
-        const { data: verifyData } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-          
-        console.log('Verificação após atualização:', verifyData);
+      // Verificar se a atualização foi bem-sucedida
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('profiles')
+        .select('role, name')
+        .eq('id', userId)
+        .single();
         
-        if (verifyData && verifyData.role === newRole) {
-          console.log('Atualização foi bem-sucedida, mas não retornou dados');
-        } else {
-          throw new Error('A atualização não foi aplicada corretamente');
-        }
+      console.log('Dados de verificação:', verifyData);
+      
+      if (verifyError) {
+        console.error('Erro na verificação:', verifyError);
+        throw new Error('Não foi possível verificar a atualização');
       }
 
-      // Atualizar o estado local imediatamente
-      setUsers(prevUsers => {
-        const updatedUsers = prevUsers.map(user => 
-          user.id === userId ? { ...user, role: newRole } : user
-        );
-        console.log('Estado local atualizado:', updatedUsers);
-        return updatedUsers;
-      });
+      if (verifyData && verifyData.role === newRole) {
+        // Atualizar o estado local
+        setUsers(prevUsers => {
+          const updatedUsers = prevUsers.map(user => 
+            user.id === userId ? { ...user, role: newRole } : user
+          );
+          console.log('Estado local atualizado');
+          return updatedUsers;
+        });
 
-      toast({
-        title: "Permissão atualizada com sucesso!",
-        description: `${userCheck.name} ${newRole === 'admin' ? 'promovido a' : 'removido de'} administrador.`,
-      });
-
-      // Recarregar a lista para garantir sincronização
-      console.log('Recarregando lista...');
-      setTimeout(() => {
-        loadUsers();
-      }, 1000);
+        toast({
+          title: "Permissão atualizada com sucesso!",
+          description: `${verifyData.name} ${newRole === 'admin' ? 'promovido a' : 'removido de'} administrador.`,
+        });
+      } else {
+        throw new Error('A atualização não foi aplicada corretamente');
+      }
       
     } catch (error: any) {
       console.error('=== ERRO NO TOGGLE ADMIN ===');
