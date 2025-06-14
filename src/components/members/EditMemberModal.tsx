@@ -2,13 +2,13 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/components/ui/use-toast";
+import { editMemberFormSchema, EditMemberFormData } from './edit-modal/EditMemberFormSchema';
+import { EditMemberFormFields } from './edit-modal/EditMemberFormFields';
 
 interface Member {
   id: string;
@@ -25,21 +25,14 @@ interface EditMemberModalProps {
   onUpdate: () => void;
 }
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
-  aliasName: z.string().optional().or(z.literal('')),
-  role: z.string().min(1, { message: 'Selecione uma função' }),
-  stateId: z.string().min(1, { message: 'State ID é obrigatório' }),
-});
-
 export const EditMemberModal: React.FC<EditMemberModalProps> = ({
   member,
   isOpen,
   onClose,
   onUpdate
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<EditMemberFormData>({
+    resolver: zodResolver(editMemberFormSchema),
     defaultValues: {
       name: member?.name || '',
       aliasName: member?.alias_name || '',
@@ -59,7 +52,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
     }
   }, [member, form]);
 
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: EditMemberFormData) => {
     if (!member) return;
 
     try {
@@ -110,81 +103,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">Nome</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Nome do membro" 
-                      className="bg-guild-dark/70 border-guild-primary/30 text-white" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="stateId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">State ID</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="ID do estado" 
-                      className="bg-guild-dark/70 border-guild-primary/30 text-white" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="aliasName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">Alias Name (opcional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Nome alternativo ou apelido" 
-                      className="bg-guild-dark/70 border-guild-primary/30 text-white" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">Função</FormLabel>
-                  <FormControl>
-                    <select
-                      className="w-full h-10 px-3 py-2 rounded-md bg-guild-dark/70 border border-guild-primary/30 text-white"
-                      {...field}
-                    >
-                      <option value="Membro">Membro</option>
-                      <option value="Farmeador">Farmeador</option>
-                      <option value="Segurança">Segurança</option>
-                      <option value="Líder">Líder</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
+            <EditMemberFormFields control={form.control} />
             
             <DialogFooter className="mt-6 gap-2">
               <Button 
