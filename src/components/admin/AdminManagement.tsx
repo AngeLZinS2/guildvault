@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Crown, Shield, User } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import { PaginationControls } from '@/components/members/PaginationControls';
+import { PaginationInfo } from '@/types';
 
 interface User {
   id: string;
@@ -15,9 +17,17 @@ interface User {
   role: string;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export const AdminManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    pageSize: ITEMS_PER_PAGE,
+    totalItems: 0,
+    totalPages: 1
+  });
 
   const loadUsers = async () => {
     try {
@@ -28,7 +38,16 @@ export const AdminManagement: React.FC = () => {
         .order('name');
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      const userData = data || [];
+      setUsers(userData);
+      
+      // Update pagination
+      setPagination(prevState => ({
+        ...prevState,
+        totalItems: userData.length,
+        totalPages: Math.ceil(userData.length / ITEMS_PER_PAGE)
+      }));
     } catch (error: any) {
       toast({
         title: "Erro ao carregar usuários",
@@ -82,6 +101,20 @@ export const AdminManagement: React.FC = () => {
     return <Badge variant="secondary">Membro</Badge>;
   };
 
+  // Get current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+    return users.slice(startIndex, startIndex + pagination.pageSize);
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setPagination({
+      ...pagination,
+      currentPage: page
+    });
+  };
+
   return (
     <Card className="bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/30">
       <CardHeader className="border-b border-guild-primary/20 pb-4">
@@ -97,52 +130,75 @@ export const AdminManagement: React.FC = () => {
             Carregando usuários...
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-guild-primary/20">
-                <TableHead className="text-gray-300">Nome</TableHead>
-                <TableHead className="text-gray-300">State ID</TableHead>
-                <TableHead className="text-gray-300">Função Atual</TableHead>
-                <TableHead className="text-gray-300">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <TableRow key={user.id} className="border-b border-guild-primary/10 hover:bg-guild-primary/5">
-                    <TableCell className="text-white">{user.name}</TableCell>
-                    <TableCell className="text-white">{user.state_id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(user.role)}
-                        {getRoleBadge(user.role)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleAdminRole(user.id, user.role)}
-                        className={`border-guild-primary/30 text-white ${
-                          user.role === 'admin' 
-                            ? 'hover:bg-red-500/20' 
-                            : 'hover:bg-green-500/20'
-                        }`}
-                      >
-                        {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-                      </Button>
-                    </TableCell>
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-guild-primary/20">
+                    <TableHead className="text-gray-300">Nome</TableHead>
+                    <TableHead className="text-gray-300">State ID</TableHead>
+                    <TableHead className="text-gray-300">Função Atual</TableHead>
+                    <TableHead className="text-gray-300">Ações</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-400">
-                    Nenhum usuário encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                  {getCurrentPageItems().length > 0 ? (
+                    getCurrentPageItems().map((user) => (
+                      <TableRow key={user.id} className="border-b border-guild-primary/10 hover:bg-guild-primary/5">
+                        <TableCell className="text-white">{user.name}</TableCell>
+                        <TableCell className="text-white">{user.state_id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getRoleIcon(user.role)}
+                            {getRoleBadge(user.role)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleAdminRole(user.id, user.role)}
+                            className={`border-guild-primary/30 text-white ${
+                              user.role === 'admin' 
+                                ? 'hover:bg-red-500/20' 
+                                : 'hover:bg-green-500/20'
+                            }`}
+                          >
+                            {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-400">
+                        Nenhum usuário encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination controls */}
+            {users.length > 0 && pagination.totalPages > 1 && (
+              <div className="flex justify-center mt-4">
+                <PaginationControls 
+                  pagination={pagination} 
+                  onPageChange={handlePageChange} 
+                />
+              </div>
+            )}
+
+            {/* Pagination summary */}
+            {users.length > 0 && (
+              <div className="text-center text-sm text-gray-400 mt-2">
+                Mostrando {Math.min(users.length, (pagination.currentPage - 1) * pagination.pageSize + 1)} 
+                -{Math.min(users.length, pagination.currentPage * pagination.pageSize)} 
+                {' '}de {users.length} usuários
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
