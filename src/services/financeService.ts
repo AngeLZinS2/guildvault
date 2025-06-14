@@ -29,8 +29,42 @@ export type VerificationData = {
   verification_notes?: string | null;
 }
 
+// Função para verificar se o usuário é admin
+const checkIsAdmin = async (): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return false;
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('state_id')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !profile) return false;
+    
+    return profile.state_id === '00';
+  } catch (error) {
+    console.error('Erro ao verificar status de admin:', error);
+    return false;
+  }
+};
+
 export const addFinanceRecord = async (data: FinanceData) => {
   try {
+    // Verificar se o usuário é admin antes de permitir a operação
+    const isAdmin = await checkIsAdmin();
+    
+    if (!isAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem registrar transações financeiras.",
+        variant: "destructive"
+      });
+      return { success: false, error: "Acesso negado" };
+    }
+
     const { error } = await supabase
       .from('finances')
       .insert({
