@@ -19,6 +19,7 @@ import { PaginationInfo } from '@/types';
 import { ColorPersonalization } from '@/components/ColorPersonalization';
 import { AdminManagement } from '@/components/admin/AdminManagement';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { EditMemberModal } from '@/components/members/EditMemberModal';
 
 type Member = {
   id: string;
@@ -49,6 +50,7 @@ const Members = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showNewMemberForm, setShowNewMemberForm] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
   
   // Pagination state
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -213,6 +215,18 @@ const Members = () => {
     form.reset();
   };
 
+  const handleEditMember = (member: Member) => {
+    setEditingMember(member);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditingMember(null);
+  };
+
+  const handleUpdateMember = () => {
+    loadMembers();
+  };
+
   return (
     <div className="container mx-auto p-6">
       <Card className="bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/30">
@@ -325,15 +339,26 @@ const Members = () => {
                       <TableCell className="text-gray-300">{member.join_date}</TableCell>
                       <TableCell className="text-gray-300">{member.last_activity || '—'}</TableCell>
                       <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => toggleStatus(member.id)}
-                          className="border-guild-primary/30 text-white hover:bg-guild-primary/20"
-                          disabled={isLoading}
-                        >
-                          {member.status === 'active' ? 'Desativar' : 'Ativar'}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => toggleStatus(member.id)}
+                            className="border-guild-primary/30 text-white hover:bg-guild-primary/20"
+                            disabled={isLoading}
+                          >
+                            {member.status === 'active' ? 'Desativar' : 'Ativar'}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleEditMember(member)}
+                            className="border-guild-primary/30 text-white hover:bg-green-500/20"
+                            disabled={isLoading}
+                          >
+                            Editar
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -511,6 +536,14 @@ const Members = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal for editing member */}
+      <EditMemberModal
+        member={editingMember}
+        isOpen={!!editingMember}
+        onClose={handleCloseEditModal}
+        onUpdate={handleUpdateMember}
+      />
     </div>
   );
 };
