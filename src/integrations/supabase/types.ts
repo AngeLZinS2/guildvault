@@ -153,6 +153,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          alias_name: string | null
           id: string
           join_date: string
           last_activity: string | null
@@ -164,6 +165,7 @@ export type Database = {
           temporary_password: string | null
         }
         Insert: {
+          alias_name?: string | null
           id: string
           join_date?: string
           last_activity?: string | null
@@ -175,6 +177,7 @@ export type Database = {
           temporary_password?: string | null
         }
         Update: {
+          alias_name?: string | null
           id?: string
           join_date?: string
           last_activity?: string | null
