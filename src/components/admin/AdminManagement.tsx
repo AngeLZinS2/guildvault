@@ -22,6 +22,7 @@ const ITEMS_PER_PAGE = 10;
 export const AdminManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     pageSize: ITEMS_PER_PAGE,
@@ -49,6 +50,7 @@ export const AdminManagement: React.FC = () => {
         totalPages: Math.ceil(userData.length / ITEMS_PER_PAGE)
       }));
     } catch (error: any) {
+      console.error('Erro ao carregar usuários:', error);
       toast({
         title: "Erro ao carregar usuários",
         description: error.message,
@@ -64,28 +66,48 @@ export const AdminManagement: React.FC = () => {
   }, []);
 
   const toggleAdminRole = async (userId: string, currentRole: string) => {
+    setUpdating(userId);
     try {
       const newRole = currentRole === 'admin' ? 'Membro' : 'admin';
       
-      const { error } = await supabase
+      console.log('Atualizando usuário:', userId, 'de', currentRole, 'para', newRole);
+      
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na atualização:', error);
+        throw error;
+      }
+
+      console.log('Atualização bem-sucedida:', data);
+
+      // Atualizar o estado local imediatamente
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, role: newRole } : user
+        )
+      );
 
       toast({
         title: "Permissão atualizada",
         description: `Usuário ${newRole === 'admin' ? 'promovido a' : 'removido de'} administrador.`,
       });
 
-      loadUsers();
+      // Recarregar a lista para garantir sincronização
+      await loadUsers();
     } catch (error: any) {
+      console.error('Erro ao atualizar permissão:', error);
       toast({
         title: "Erro ao atualizar permissão",
         description: error.message,
         variant: "destructive"
       });
+    } finally {
+      setUpdating(null);
     }
   };
 
@@ -158,13 +180,19 @@ export const AdminManagement: React.FC = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => toggleAdminRole(user.id, user.role)}
+                            disabled={updating === user.id}
                             className={`border-guild-primary/30 text-white ${
                               user.role === 'admin' 
                                 ? 'hover:bg-red-500/20' 
                                 : 'hover:bg-green-500/20'
                             }`}
                           >
-                            {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                            {updating === user.id 
+                              ? 'Atualizando...' 
+                              : user.role === 'admin' 
+                                ? 'Remover Admin' 
+                                : 'Tornar Admin'
+                            }
                           </Button>
                         </TableCell>
                       </TableRow>
