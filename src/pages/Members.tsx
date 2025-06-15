@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, UserRound, UserCheck, UserX, Copy, Crown } from 'lucide-react';
+import { Search, UserRound, UserCheck, UserX, Copy, Crown, ExternalLink } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import { addMemberWithAuth, fetchMembers, updateMemberStatus } from '@/services/memberService';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -251,6 +252,14 @@ const Members = () => {
                   disabled={isLoading}
                 >
                   Adicionar Membro
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-guild-primary/30 text-white hover:bg-guild-primary/20 ml-2"
+                  onClick={() => window.open('https://guildgangue.shop/', '_blank')}
+                >
+                  <ExternalLink className="mr-1 h-5 w-5" />
+                  Loja
                 </Button>
                 <ColorPersonalization />
               </div>
