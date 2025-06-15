@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -54,16 +55,18 @@ const checkIsAdmin = async (): Promise<boolean> => {
 
 export const addFinanceRecord = async (data: FinanceData) => {
   try {
-    // Verificar se o usuário é admin antes de permitir a operação
-    const isAdmin = await checkIsAdmin();
-    
-    if (!isAdmin) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem registrar transações financeiras.",
-        variant: "destructive"
-      });
-      return { success: false, error: "Acesso negado" };
+    // Para retiradas, verificar se o usuário é admin
+    if (data.type === 'withdrawal') {
+      const isAdmin = await checkIsAdmin();
+      
+      if (!isAdmin) {
+        toast({
+          title: "Acesso negado",
+          description: "Apenas administradores podem registrar retiradas.",
+          variant: "destructive"
+        });
+        return { success: false, error: "Acesso negado" };
+      }
     }
 
     const { error } = await supabase
