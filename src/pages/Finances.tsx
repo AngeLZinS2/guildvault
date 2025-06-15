@@ -14,6 +14,7 @@ import { fetchMembers } from "@/services/memberService";
 import { MemberData } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { filterTransactionsByDate } from "@/utils/dateFilters";
 
 // Import new componentized parts
 import { FinanceHeader } from "@/components/finance/FinanceHeader";
@@ -21,7 +22,7 @@ import { FinanceStats } from "@/components/finance/FinanceStats";
 import { MonthlyChart } from "@/components/finance/MonthlyChart";
 import { RecentTransactions } from "@/components/finance/RecentTransactions";
 import { PaymentScheduleCard } from "@/components/finance/PaymentScheduleCard";
-import { TransactionTable } from "@/components/finance/TransactionTable";
+import { TransactionTable } from "@/components/finance/transaction-table/TransactionTable";
 import { PaymentSchedulePage } from "@/components/finance/PaymentSchedulePage";
 import { DepositFormModal } from "@/components/finance/DepositFormModal";
 import { WithdrawalFormModal } from "@/components/finance/WithdrawalFormModal";
@@ -38,6 +39,11 @@ export default function Finances() {
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const [loading, setLoading] = useState(true);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -351,6 +357,8 @@ export default function Finances() {
     return matchesSearch && matchesType;
   });
 
+  const dateFilteredTransactions = filterTransactionsByDate(filteredTransactions, dateFilter, customDateRange);
+
   const totalBalance = transactions.reduce((acc, transaction) => {
     if (transaction.type === 'deposit') {
       return acc + transaction.amount;
@@ -431,11 +439,15 @@ export default function Finances() {
         <TabsContent value="transactions" className="space-y-6">
           <TransactionTable
             transactions={transactions}
-            filteredTransactions={filteredTransactions}
+            filteredTransactions={dateFilteredTransactions}
             searchTerm={searchTerm}
             filterType={filterType}
+            dateFilter={dateFilter}
+            customDateRange={customDateRange}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             onFilterChange={setFilterType}
+            onDateFilterChange={setDateFilter}
+            onCustomDateRangeChange={setCustomDateRange}
             onVerifyTransaction={handleVerifyTransaction}
             currentUserId="test-user-id" // In a real app, this would be the current user's ID
           />

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FileText, Download } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
+import { DateFilter } from "./DateFilter";
 
 interface Transaction {
   id: string;
@@ -28,16 +29,24 @@ interface Transaction {
 interface TransactionTableHeaderProps {
   searchTerm: string;
   filterType: string;
+  dateFilter: string;
+  customDateRange: { from: Date | undefined; to: Date | undefined };
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterChange: (value: string) => void;
+  onDateFilterChange: (value: string) => void;
+  onCustomDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void;
   filteredTransactions: Transaction[];
 }
 
 export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
   searchTerm,
   filterType,
+  dateFilter,
+  customDateRange,
   onSearchChange,
   onFilterChange,
+  onDateFilterChange,
+  onCustomDateRangeChange,
   filteredTransactions,
 }) => {
   const formatDate = (dateString: string) => {
@@ -70,18 +79,38 @@ export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
   };
   
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-      <div className="relative w-full md:w-auto md:flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Pesquisar por membro ou descrição..."
-          className="pl-10"
-          value={searchTerm}
-          onChange={onSearchChange}
-        />
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Pesquisar por membro ou descrição..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={onSearchChange}
+          />
+        </div>
+        
+        <div className="flex gap-2 w-full md:w-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileText className="h-4 w-4 mr-2" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <Download className="h-4 w-4 mr-2" /> Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <Download className="h-4 w-4 mr-2" /> PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      
-      <div className="flex gap-2 w-full md:w-auto">
+
+      <div className="flex flex-col sm:flex-row gap-2">
         <Select value={filterType} onValueChange={onFilterChange}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Filtrar por tipo" />
@@ -92,22 +121,13 @@ export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
             <SelectItem value="withdrawal">Retiradas</SelectItem>
           </SelectContent>
         </Select>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <FileText className="h-4 w-4 mr-2" /> Exportar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleExport('excel')}>
-              <Download className="h-4 w-4 mr-2" /> Excel (.xlsx)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <Download className="h-4 w-4 mr-2" /> PDF (.pdf)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <DateFilter
+          dateFilter={dateFilter}
+          onDateFilterChange={onDateFilterChange}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={onCustomDateRangeChange}
+        />
       </div>
     </div>
   );

@@ -32,8 +32,12 @@ interface TransactionTableProps {
   filteredTransactions: Transaction[];
   searchTerm: string;
   filterType: string;
+  dateFilter: string;
+  customDateRange: { from: Date | undefined; to: Date | undefined };
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterChange: (value: string) => void;
+  onDateFilterChange: (value: string) => void;
+  onCustomDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void;
   onVerifyTransaction: (id: string, data: { verified: boolean, verified_by: string | null, verification_notes?: string }) => void;
   currentUserId?: string;
 }
@@ -43,8 +47,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   filteredTransactions,
   searchTerm,
   filterType,
+  dateFilter,
+  customDateRange,
   onSearchChange,
   onFilterChange,
+  onDateFilterChange,
+  onCustomDateRangeChange,
   onVerifyTransaction,
   currentUserId = "test-user-id" // Placeholder user ID for testing
 }) => {
@@ -93,8 +101,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       <TransactionTableHeader
         searchTerm={searchTerm}
         filterType={filterType}
+        dateFilter={dateFilter}
+        customDateRange={customDateRange}
         onSearchChange={onSearchChange}
         onFilterChange={onFilterChange}
+        onDateFilterChange={onDateFilterChange}
+        onCustomDateRangeChange={onCustomDateRangeChange}
         filteredTransactions={filteredTransactions}
       />
 
