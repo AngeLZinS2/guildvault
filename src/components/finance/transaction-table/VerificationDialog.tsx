@@ -23,6 +23,7 @@ interface VerificationDialogProps {
   verificationNotes: string;
   setVerificationNotes: (notes: string) => void;
   handleVerify: () => void;
+  busy?: boolean;
 }
 
 export const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -32,11 +33,12 @@ export const VerificationDialog: React.FC<VerificationDialogProps> = ({
   verificationNotes,
   setVerificationNotes,
   handleVerify,
+  busy = false,
 }) => {
   if (!selectedTransaction) return null;
 
   return (
-    <Dialog open={verificationOpen} onOpenChange={setVerificationOpen}>
+    <Dialog open={verificationOpen} onOpenChange={open => !busy && setVerificationOpen(open)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -64,9 +66,10 @@ export const VerificationDialog: React.FC<VerificationDialogProps> = ({
           </div>
           
           <DialogFooter className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setVerificationOpen(false)}>Cancelar</Button>
+            <Button disabled={busy} variant="outline" onClick={() => setVerificationOpen(false)}>Cancelar</Button>
             <Button 
               onClick={handleVerify}
+              disabled={busy}
               variant={selectedTransaction.verified ? "destructive" : "default"}
             >
               {selectedTransaction.verified ? "Reverter verificação" : "Verificar"}

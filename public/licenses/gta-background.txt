@@ -1,0 +1,15 @@
+GuildVault GTA background
+
+Source image: Grand Theft Auto VI / Vice City 01 — Rockstar Games.
+Official gallery: https://www.rockstargames.com/VI/media/screenshots
+Image: https://www.rockstargames.com/VI/_next/static/media/Vice_City_01.135x56yoeu.6t.jpg?akim=1&imdensity=1&imwidth=1920
+Downloaded 2026-10-08. Copyright Rockstar Games / Take-Two Interactive.
+Source artwork is unchanged. This attribution does not imply affiliation or grant a redistribution license.
+
+Live camera composition authored and verified using Hyperframes 0.8.141.
+Editable source: videos/gta-cinematic-background/index.html.
+Five-image / 50-second live cycle with slow framing and 1.2-second dissolves.
+Additional images: Vice City 03, Vice City 08, Leonida Keys 01, Jason and Lucia 01.
+Full source URLs and provenance: videos/gta-cinematic-background/assets/index.md.
+This composition animates screenshot framing, not game objects.
+GSAP 3.14.2: https://gsap.com/ — license notice retained in assets/gsap.min.js.

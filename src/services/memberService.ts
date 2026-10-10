@@ -26,7 +26,7 @@ export const addMemberWithAuth = async (data: MemberData, password?: string) => 
     // Generate email from state ID
     const email = `${data.stateId}@guildvault.com`;
     
-    // Create user in auth system with autoconfirm option
+    // Create the member through the authenticated API.
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: finalPassword,
@@ -47,31 +47,6 @@ export const addMemberWithAuth = async (data: MemberData, password?: string) => 
         variant: "destructive"
       });
       return { success: false, error: authError };
-    }
-
-    // Manually confirm user's email using admin functions
-    // (This would typically be done server-side, but we're doing it client-side for demonstration)
-    
-    // Manually update profiles table with state_id only (not email)
-    if (authData.user) {
-      // Update the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          state_id: data.stateId,
-          name: data.name,
-          role: data.role
-        })
-        .eq('id', authData.user.id);
-
-      if (profileError) {
-        toast({
-          title: "Erro ao atualizar perfil",
-          description: profileError.message,
-          variant: "destructive"
-        });
-        return { success: false, error: profileError };
-      }
     }
 
     toast({

@@ -21,6 +21,8 @@ interface DepositFormModalProps {
   handleSelectChange: (formName: string, field: string, value: string) => void;
   handleFileUpload: (file: File | null) => void;
   handleSubmit: () => void;
+  busy?: boolean;
+  uploadError?: boolean;
 }
 
 export const DepositFormModal: React.FC<DepositFormModalProps> = ({
@@ -32,9 +34,12 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
   handleSelectChange,
   handleFileUpload,
   handleSubmit,
+  busy = false,
+  uploadError = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = React.useState<string | null>(null);
+  React.useEffect(() => { if (!isOpen) setSelectedFileName(null); }, [isOpen]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -63,13 +68,13 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={open => !busy && setIsOpen(open)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar Novo Depósito</DialogTitle>
         </DialogHeader>
         
-        <form className="space-y-4 py-4">
+        <form className="space-y-4 py-4" onSubmit={event => { event.preventDefault(); handleSubmit(); }}>
           <div className="space-y-2">
             <label htmlFor="amount" className="text-sm font-medium">
               Valor
@@ -92,8 +97,8 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
             <label htmlFor="member" className="text-sm font-medium">
               Membro
             </label>
-            <Select onValueChange={(value) => handleSelectChange('deposit', 'member', value)}>
-              <SelectTrigger>
+            <Select value={depositForm.member} onValueChange={(value) => handleSelectChange('deposit', 'member', value)}>
+              <SelectTrigger id="member">
                 <SelectValue placeholder="Selecionar membro" />
               </SelectTrigger>
               <SelectContent>
@@ -105,6 +110,9 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
               </SelectContent>
             </Select>
           </div>
+          {busy && <p role="status" className="text-sm">Processando envio…</p>}
+          {uploadError && <p role="alert" className="text-sm text-destructive">Comprovante não enviado. Escolha outro arquivo ou remova o anexo.</p>}
+          {selectedFileName && <Button type="button" variant="ghost" disabled={busy} onClick={() => { setSelectedFileName(null); if (fileInputRef.current) fileInputRef.current.value = ""; handleFileUpload(null); }}>Remover anexo</Button>}
 
           <div className="space-y-2">
             <label htmlFor="description" className="text-sm font-medium">
@@ -163,6 +171,7 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
         <DialogFooter>
           <Button 
             variant="outline" 
+            disabled={busy}
             onClick={() => setIsOpen(false)}
           >
             Cancelar
@@ -170,7 +179,7 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
           <Button 
             className="bg-green-600 hover:bg-green-700" 
             onClick={handleSubmit}
-            disabled={!depositForm.amount || !depositForm.member}
+            disabled={busy || uploadError || !depositForm.amount || !depositForm.member}
           >
             Registrar Depósito
           </Button>

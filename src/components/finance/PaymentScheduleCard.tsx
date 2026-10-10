@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus } from "lucide-react";
+import { calendarDate } from "@/utils/financeContent";
 
 interface PaymentSchedule {
   id: string;
@@ -15,16 +16,20 @@ interface PaymentSchedule {
 interface PaymentScheduleCardProps {
   paymentSchedule: PaymentSchedule[];
   onOpenPaymentModal: () => void;
+  canManage?: boolean;
+  members?: { id: string; name: string }[];
 }
 
 export const PaymentScheduleCard: React.FC<PaymentScheduleCardProps> = ({
   paymentSchedule,
   onOpenPaymentModal,
+  canManage = false,
+  members = [],
 }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Próximos Pagamentos</CardTitle>
+        <CardTitle>Agenda de contribuições</CardTitle>
         <CardDescription>Cronograma</CardDescription>
       </CardHeader>
       <CardContent>
@@ -36,14 +41,14 @@ export const PaymentScheduleCard: React.FC<PaymentScheduleCardProps> = ({
                   <div>
                     <h4 className="font-medium">{payment.title}</h4>
                     <div className="flex items-center text-xs text-gray-400 mt-1">
-                      <Calendar className="h-3 w-3 mr-1" /> Vencimento: {new Date(payment.due_date).toLocaleDateString()}
+                      <Calendar className="h-3 w-3 mr-1" /> Vencimento: {calendarDate(payment.due_date).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                   <span className="font-medium text-primary">${payment.amount.toLocaleString()}</span>
                 </div>
                 <div className="mt-2 text-xs">
                   <span className="text-gray-400">Membros: </span>
-                  <span>{payment.members.join(", ")}</span>
+                  <span>{(payment.members ?? []).map(member => members.find(profile => profile.id === member)?.name ?? member).join(", ")}</span>
                 </div>
               </div>
             ))}
@@ -58,7 +63,7 @@ export const PaymentScheduleCard: React.FC<PaymentScheduleCardProps> = ({
           className="w-full mt-4"
           onClick={onOpenPaymentModal}
         >
-          <Plus className="h-4 w-4 mr-1" /> Adicionar Pagamento
+          <Plus className="h-4 w-4 mr-1" /> {canManage ? "Adicionar Pagamento" : "Ver agenda"}
         </Button>
       </CardContent>
     </Card>

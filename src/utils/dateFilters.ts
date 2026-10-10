@@ -1,5 +1,6 @@
 
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, isWithinInterval } from "date-fns";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subWeeks, subMonths, isWithinInterval } from "date-fns";
+import { calendarDate } from "./financeContent";
 
 export interface Transaction {
   id: string;
@@ -31,26 +32,28 @@ export const filterTransactionsByDate = (
       startDate = startOfWeek(now, { weekStartsOn: 1 }); // Segunda-feira
       endDate = endOfWeek(now, { weekStartsOn: 1 }); // Domingo
       break;
-    case "last-week":
+    case "last-week": {
       const lastWeek = subWeeks(now, 1);
       startDate = startOfWeek(lastWeek, { weekStartsOn: 1 });
       endDate = endOfWeek(lastWeek, { weekStartsOn: 1 });
       break;
+    }
     case "this-month":
       startDate = startOfMonth(now);
       endDate = endOfMonth(now);
       break;
-    case "last-month":
+    case "last-month": {
       const lastMonth = subMonths(now, 1);
       startDate = startOfMonth(lastMonth);
       endDate = endOfMonth(lastMonth);
       break;
+    }
     case "custom":
       if (!customDateRange?.from || !customDateRange?.to) {
         return transactions;
       }
-      startDate = customDateRange.from;
-      endDate = customDateRange.to;
+      startDate = startOfDay(customDateRange.from);
+      endDate = endOfDay(customDateRange.to);
       break;
     default:
       return transactions;
@@ -58,7 +61,8 @@ export const filterTransactionsByDate = (
 
   return transactions.filter((transaction) => {
     if (!transaction.date) return false;
-    const transactionDate = new Date(transaction.date);
+    if (startDate > endDate) return false;
+    const transactionDate = calendarDate(transaction.date);
     return isWithinInterval(transactionDate, { start: startDate, end: endDate });
   });
 };

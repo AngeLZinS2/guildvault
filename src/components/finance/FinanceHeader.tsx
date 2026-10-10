@@ -16,13 +16,13 @@ export const FinanceHeader: React.FC<FinanceHeaderProps> = ({
   const { isAdmin, loading } = useAdminCheck();
 
   return (
-    <div className="flex justify-between items-center mb-6">
-      <h1 className="text-3xl font-bold">Finanças</h1>
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><p className="section-kicker">TESOURARIA</p><h1 className="text-3xl sm:text-4xl">Finanças</h1><p className="mt-2 text-sm text-muted-foreground">Acompanhe cada entrada e retirada do caixa.</p></div>
       {!loading && (
-        <div className="flex space-x-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           {/* All users can register deposits */}
           <Button 
-            className="bg-green-600 hover:bg-green-700"
+            className="min-h-11 bg-emerald-600 hover:bg-emerald-700"
             onClick={onOpenDepositModal}
           >
             <ArrowUpCircle className="h-5 w-5 mr-2" /> Registrar Depósito
@@ -31,7 +31,7 @@ export const FinanceHeader: React.FC<FinanceHeaderProps> = ({
           {/* Only admins can register withdrawals */}
           {isAdmin && (
             <Button 
-              className="bg-red-600 hover:bg-red-700"
+              className="min-h-11 bg-rose-600 hover:bg-rose-700"
               onClick={onOpenWithdrawalModal}
             >
               <ArrowDownCircle className="h-5 w-5 mr-2" /> Registrar Retirada

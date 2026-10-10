@@ -56,11 +56,11 @@ export default {
         },
         guild: {
           primary: "rgb(var(--guild-primary-rgb) / <alpha-value>)", // Updated to use RGB format with alpha support
-          secondary: "#ff6b35",
-          dark: "#121420",
+          secondary: "#ff8769",
+          dark: "#101c23",
           light: "#e2e8f0",
-          surface: "#1e1f2c",
-          background: "#1a1c29",
+          surface: "#1b2c35",
+          background: "#12212a",
         },
       },
       borderRadius: {
@@ -77,15 +77,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 3px 0 rgb(var(--guild-primary-rgb) / 0.2)" },
-          "50%": { boxShadow: "0 0 12px 4px rgb(var(--guild-primary-rgb) / 0.4)" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
       },
       backgroundImage: {
         "los-santos": "url('/los-santos-skyline.jpg')",

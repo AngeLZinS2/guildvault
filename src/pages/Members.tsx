@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { GameLoader } from "@/components/ui/game-loader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { ColorPersonalization } from '@/components/ColorPersonalization';
 import { AdminManagement } from '@/components/admin/AdminManagement';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { EditMemberModal } from '@/components/members/EditMemberModal';
+import { MemberDetails } from '@/components/members/MemberDetails';
 
 type Member = {
   id: string;
@@ -32,12 +34,10 @@ type Member = {
   last_activity?: string;
   state_id?: string;
   alias_name?: string;
-  email?: string;
 };
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
-  email: z.string().email({ message: 'Email inválido' }),
   role: z.string().min(1, { message: 'Selecione uma função' }),
   stateId: z.string().min(2, { message: 'State ID é obrigatório' }),
 });
@@ -46,7 +46,9 @@ const ITEMS_PER_PAGE = 10;
 
 const Members = () => {
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAdminCheck();
+  const { isSuperAdmin, isAdmin, currentUser, loading: adminLoading } = useAdminCheck();
+  const canManage = isAdmin && !adminLoading;
+  const [profileMember, setProfileMember] = useState<Member | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -68,7 +70,6 @@ const Members = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      email: '',
       role: 'Membro',
       stateId: '',
     },
@@ -76,7 +77,7 @@ const Members = () => {
 
   // Check if user is admin (super admin or regular admin)
   const isUserAdmin = (member: Member) => {
-    return member.state_id === '00' || member.role === 'admin';
+    return member.role === 'superadmin' || member.role === 'admin';
   };
 
   // Check if user is authenticated
@@ -157,6 +158,8 @@ const Members = () => {
 
   // Toggle status
   const toggleStatus = async (id: string) => {
+    if (id === currentUser?.id) return;
+    if (!canManage) return;
     const member = members.find(m => m.id === id);
     if (!member) return;
     
@@ -195,10 +198,10 @@ const Members = () => {
 
   // Add member
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    if (!canManage || isLoading) return;
     setIsLoading(true);
     const memberData = {
       name: data.name,
-      email: data.email,
       role: data.role,
       stateId: data.stateId,
     };
@@ -224,6 +227,7 @@ const Members = () => {
   };
 
   const handleEditMember = (member: Member) => {
+    if (!canManage) return;
     setEditingMember(member);
   };
 
@@ -237,22 +241,22 @@ const Members = () => {
 
   return (
     <TooltipProvider>
-      <div className="container mx-auto p-6">
+      <div className="mx-auto max-w-[1400px] motion-enter">
         <Card className="bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/30">
           <CardHeader className="border-b border-guild-primary/20 pb-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4 xl:flex-row xl:justify-between xl:items-center">
               <div>
-                <CardTitle className="text-2xl font-bold text-white">Membros da Guilda</CardTitle>
+                <CardTitle className="font-display text-4xl text-white">Minha crew</CardTitle>
                 <CardDescription className="text-gray-300">Gerencie os membros da sua guilda</CardDescription>
               </div>
-              <div className="flex">
-                <Button 
+              <div className="flex flex-wrap gap-y-2">
+                {canManage && <Button
                   onClick={() => setShowNewMemberForm(true)}
                   className="bg-guild-primary hover:bg-guild-primary/80"
                   disabled={isLoading}
                 >
                   Adicionar Membro
-                </Button>
+                </Button>}
                 <Button 
                   variant="outline" 
                   className="border-guild-primary/30 text-white hover:bg-guild-primary/20 ml-2"
@@ -327,7 +331,7 @@ const Members = () => {
                   {isLoading ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-gray-400">
-                        Carregando membros...
+                        <GameLoader label="Reunindo sua crew..." inline />
                       </TableCell>
                     </TableRow>
                   ) : getCurrentPageItems().length > 0 ? (
@@ -375,14 +379,17 @@ const Members = () => {
                         <TableCell className="text-gray-300">{member.last_activity || '—'}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="border-guild-primary/30 text-white hover:bg-guild-primary/20" onClick={() => setProfileMember(member)}>Perfil</Button>
+                            {canManage && <>
                             <Button 
                               variant="outline" 
                               size="sm" 
                               onClick={() => toggleStatus(member.id)}
                               className="border-guild-primary/30 text-white hover:bg-guild-primary/20"
-                              disabled={isLoading}
+                              disabled={isLoading || member.id === currentUser?.id}
+                              title={member.id === currentUser?.id ? 'Sua própria conta não pode ser desativada' : undefined}
                             >
-                              {member.status === 'active' ? 'Desativar' : 'Ativar'}
+                              {member.id === currentUser?.id ? 'Conta atual' : member.status === 'active' ? 'Desativar' : 'Ativar'}
                             </Button>
                             <Button 
                               variant="outline" 
@@ -393,6 +400,7 @@ const Members = () => {
                             >
                               Editar
                             </Button>
+                            </>}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -400,7 +408,7 @@ const Members = () => {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-gray-400">
-                        Nenhum membro encontrado. Adicione novos membros usando o botão acima.
+                        Nenhum membro encontrado.{canManage ? ' Adicione novos membros usando o botão acima.' : ''}
                       </TableCell>
                     </TableRow>
                   )}
@@ -430,7 +438,7 @@ const Members = () => {
         </Card>
 
         {/* Modal for adding new member */}
-        <Dialog open={showNewMemberForm} onOpenChange={handleCloseDialog}>
+        <Dialog open={canManage && showNewMemberForm} onOpenChange={handleCloseDialog}>
           <DialogContent className="bg-guild-surface border-guild-primary/30 text-white sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-xl">Adicionar Novo Membro</DialogTitle>
@@ -509,25 +517,6 @@ const Members = () => {
                   
                   <FormField
                     control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Email</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="email@exemplo.com" 
-                            type="email" 
-                            className="bg-guild-dark/70 border-guild-primary/30 text-white" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
                     name="role"
                     render={({ field }) => (
                       <FormItem>
@@ -573,12 +562,13 @@ const Members = () => {
         </Dialog>
 
         {/* Modal for editing member */}
-        <EditMemberModal
+        {canManage && <EditMemberModal
           member={editingMember}
           isOpen={!!editingMember}
           onClose={handleCloseEditModal}
           onUpdate={handleUpdateMember}
-        />
+        />}
+        {profileMember && <MemberDetails key={profileMember.id} member={profileMember} onClose={() => setProfileMember(null)} />}
       </div>
     </TooltipProvider>
   );

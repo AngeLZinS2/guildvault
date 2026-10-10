@@ -1,134 +1,103 @@
-import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, Menu, X, Shield } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { rpRequest } from "@/services/rpService";
+import { Bell, Building2, ChevronDown, CircleDollarSign, LayoutDashboard, LogOut, Menu, Radio, ShieldCheck, UsersRound, Vault } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-type NavItem = {
-  name: string;
-  path: string;
-  icon: React.ReactNode;
-  requiresAuth: boolean;
-};
-
-const navItems: NavItem[] = [
-  { name: "Dashboard", path: "/dashboard", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
-  { name: "Propriedades", path: "/properties", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
-  { name: "Finanças", path: "/finances", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
-  { name: "Membros", path: "/members", icon: <Shield className="w-5 h-5" />, requiresAuth: true },
+const navItems = [
+  { name: "Central", description: "Resumo da operação", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Território", description: "Bases e inventário", path: "/properties", icon: Building2 },
+  { name: "Caixa", description: "Entradas, saídas e metas", path: "/finances", icon: CircleDollarSign },
+  { name: "Crew", description: "Membros e permissões", path: "/members", icon: UsersRound },
+  { name: "Organização", description: "Operações e rotinas do RP", path: "/organization", icon: ShieldCheck },
 ];
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const reduceMotion = useReducedMotion();
+  const [pendingCount, setPendingCount] = useState(0);
+  const [profileName, setProfileName] = useState('Minha conta');
+  useEffect(() => {
+    let active = true;
+    const refresh = () => { void rpRequest<unknown[]>('inbox').then(items => { if (active) setPendingCount(items.length); }).catch(() => { if (active) setPendingCount(0); }); };
+    refresh();
+    void supabase.auth.getUser().then(({ data }) => { if (active) setProfileName(String(data.user?.name || 'Minha conta')); });
+    window.addEventListener('focus', refresh);
+    const interval = window.setInterval(refresh, 60000);
+    return () => { active = false; window.removeEventListener('focus', refresh); window.clearInterval(interval); };
+  }, [location.pathname, location.search]);
+  const current = navItems.find((item) => item.path === location.pathname) ?? navItems[0];
 
   const handleLogout = async () => {
-    try {
-      // Using signOut instead of signout (which was causing the error)
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: "Logout realizado com sucesso",
-        description: "Você foi desconectado do sistema"
-      });
-      
-      navigate("/");
-    } catch (error: any) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: error.message,
-        variant: "destructive"
-      });
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({ title: "Erro ao sair", description: error.message, variant: "destructive" });
+      return;
     }
+    toast({ title: "Sessão encerrada", description: "O cofre foi bloqueado com segurança." });
+    navigate("/");
   };
 
-  // Check if we're on the login page
-  const isLoginPage = location.pathname === "/";
-
-  if (isLoginPage) return null;
-
   return (
-    <div className="fixed top-0 left-0 w-full z-50 bg-guild-background/80 backdrop-blur-md border-b border-guild-primary/20">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <div className="text-guild-primary font-bold text-2xl flex items-center">
-              <Shield className="h-6 w-6 mr-2" />
-              <span>GuildVault</span>
-            </div>
-          </div>
-          
-          <div className="hidden md:block">
-            <div className="flex items-center space-x-4">
-              {navItems.map((item) => (
-                <Button
-                  key={item.name}
-                  variant="ghost"
-                  onClick={() => navigate(item.path)}
-                  className={cn(
-                    "text-gray-300 hover:text-white",
-                    location.pathname === item.path && "text-guild-primary border-b-2 border-guild-primary"
-                  )}
-                >
-                  {item.name}
-                </Button>
-              ))}
-              <Button 
-                variant="ghost"
-                onClick={handleLogout}
-                className="text-gray-300 hover:text-white ml-4"
-              >
-                <LogOut className="h-5 w-5 mr-1" /> Sair
-              </Button>
-            </div>
-          </div>
+    <header className="ops-topbar">
+      <div className="ops-topbar-inner">
+        <button type="button" className="ops-brand" onClick={() => navigate("/dashboard")} aria-label="Abrir a Central GuildVault">
+          <span className="ops-brand-mark"><Vault /></span>
+          <span className="ops-brand-copy"><strong>GuildVault</strong><small>Los Santos command</small></span>
+        </button>
 
-          <div className="md:hidden">
-            <Button variant="ghost" onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
+        <nav className="ops-desktop-nav" aria-label="Navegação principal">
+          {navItems.map(({ name, path, icon: Icon }) => {
+            const active = path === location.pathname;
+            return (
+              <motion.button key={path} type="button" onClick={() => navigate(path)} className={cn("ops-nav-link", active && "is-active")} whileTap={reduceMotion ? undefined : { scale: 0.96 }} aria-current={active ? "page" : undefined}>
+                <Icon /><span>{name}</span>
+                {active && <motion.i layoutId="topbar-active" transition={{ type: "spring", stiffness: 420, damping: 36 }} />}
+              </motion.button>
+            );
+          })}
+        </nav>
+
+        <div className="ops-topbar-actions">
+          <div className="ops-live-status"><Radio /><span>Central da organização</span></div>
+          <Button variant="ghost" size="icon" className="ops-icon-button relative" aria-label={`Minhas pendências: ${pendingCount}`} onClick={() => navigate('/organization?module=inbox')}><Bell />{pendingCount > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-violet-500 px-1 text-[10px] text-white">{pendingCount}</span>}</Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="ops-profile-button"><span className="ops-avatar"><ShieldCheck /></span><span className="hidden sm:block">{profileName}</span><ChevronDown /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="ops-dropdown w-64">
+              <DropdownMenuLabel><span>{profileName}</span><small>Minha organização</small></DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {navItems.map(({ name, description, path, icon: Icon }) => (
+                <DropdownMenuItem key={path} onSelect={() => navigate(path)} className={cn("ops-dropdown-item", path === location.pathname && "is-current")}><Icon /><span><strong>{name}</strong><small>{description}</small></span></DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void handleLogout()} className="ops-dropdown-item ops-logout"><LogOut /><span><strong>Sair</strong><small>Bloquear o cofre</small></span></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="ops-mobile-menu" aria-label="Abrir menu"><Menu /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="ops-dropdown w-72">
+              <DropdownMenuLabel><span>{current.name}</span><small>{current.description}</small></DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {navItems.map(({ name, description, path, icon: Icon }) => (
+                <DropdownMenuItem key={path} onSelect={() => navigate(path)} className={cn("ops-dropdown-item", path === location.pathname && "is-current")}><Icon /><span><strong>{name}</strong><small>{description}</small></span></DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void handleLogout()} className="ops-dropdown-item ops-logout"><LogOut /><span><strong>Sair</strong><small>Bloquear o cofre</small></span></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-
-      {/* Mobile menu */}
-      {isOpen && (
-        <div className="md:hidden bg-guild-surface border-t border-guild-primary/20">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navItems.map((item) => (
-              <Button
-                key={item.name}
-                variant="ghost"
-                onClick={() => {
-                  navigate(item.path);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full justify-start text-left text-gray-300 hover:text-white",
-                  location.pathname === item.path && "text-guild-primary bg-guild-primary/10"
-                )}
-              >
-                {item.icon}
-                <span className="ml-2">{item.name}</span>
-              </Button>
-            ))}
-            <Button 
-              variant="ghost" 
-              onClick={handleLogout}
-              className="w-full justify-start text-left text-gray-300 hover:text-white"
-            >
-              <LogOut className="h-5 w-5 mr-2" /> Sair
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+      <div className="ops-context-strip"><span>Distrito ativo</span><strong>{current.name}</strong><i /><span>{current.description}</span></div>
+    </header>
   );
 }

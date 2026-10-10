@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vice City — GuildVault ambient scene</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #171017;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .camera { position: absolute; inset: 0; opacity: 0; }
+      #scene-night { opacity: 1; }
+      .camera { transform-origin: 62% 38%; }
+      img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 38%; }
+      @media (max-width: 640px) { img { object-position: 58% 38%; } }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="vice-city" data-start="0" data-duration="50" data-fps="30" data-width="1920" data-height="1080">
+      <img id="scene-night" class="camera" src="assets/night.jpg" alt="" width="1920" height="1080" fetchpriority="high">
+      <img id="scene-keys" class="camera" src="assets/keys.jpg" alt="" width="1920" height="1080">
+      <img id="scene-skyline" class="camera" src="assets/skyline.jpg" alt="" width="1920" height="1080">
+      <img id="scene-crew" class="camera" src="assets/crew.jpg" alt="" width="1920" height="1080">
+      <img id="scene-airport" class="camera" src="assets/vice-city.jpg" alt="" width="1920" height="1080">
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // Official Rockstar screenshots. Motion changes framing, not game objects.
+      // Opacity dissolve adapted from the Hyperframes transitions-dissolve block.
+      const scenes = ["#scene-night", "#scene-keys", "#scene-skyline", "#scene-crew", "#scene-airport"];
+      scenes.forEach((scene, index) => {
+        const at = index === 0 ? 0 : index * 10 - 1.2;
+        tl.fromTo(scene, { scale: 1.015, x: 0, y: 0 },
+          { scale: 1.055, x: index % 2 ? -12 : 12, y: 3, duration: 10, ease: "sine.inOut", immediateRender: false }, at);
+        if (index > 0) {
+          // Keep the previous image opaque underneath: no dark flash during the blend.
+          tl.fromTo(scene, { opacity: 0 },
+            { opacity: 1, duration: 1.2, ease: "sine.inOut", immediateRender: false }, at);
+          if (index > 1) tl.set(scenes[index - 1], { opacity: 0 }, index * 10);
+        }
+      });
+      // Return to the first scene before the cycle ends; its framing matches t=0.
+      tl.to("#scene-night", { scale: 1.015, x: 0, y: 0, duration: 1.2, ease: "sine.inOut" }, 47.6);
+      tl.to("#scene-airport", { opacity: 0, duration: 1.2, ease: "sine.inOut" }, 48.8);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["vice-city"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

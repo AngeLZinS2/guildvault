@@ -55,6 +55,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       <TableCell className="text-center">
         {transaction.date ? formatDate(transaction.date) : '-'}
       </TableCell>
+      <TableCell><Badge variant="outline">{transaction.verified ? "Verificada" : "Pendente"}</Badge></TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
           <Button 

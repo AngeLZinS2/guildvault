@@ -3,17 +3,25 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Properties from "./pages/Properties";
-import Finances from "./pages/Finances";
-import Members from "./pages/Members";
-import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
-import { AnimatedBackground } from "./components/AnimatedBackground";
 import { ThemeInitializer } from "./components/ThemeInitializer";
+import { GameExperience } from "./components/GameExperience";
+import { GameLoader } from "./components/ui/game-loader";
+import { PanelPage } from "./components/motion/PanelPage";
+import { GtaCinematicBackground } from "./components/GtaCinematicBackground";
+import { PreviewBanner } from "./components/PreviewBanner";
+import { SiteFooter } from "./components/SiteFooter";
+import "./cinematic.css";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Properties = lazy(() => import("./pages/Properties"));
+const Finances = lazy(() => import("./pages/Finances"));
+const Members = lazy(() => import("./pages/Members"));
+const Organization = lazy(() => import("./pages/Organization"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Create a client
 const queryClient = new QueryClient();
@@ -45,64 +53,58 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <div className="flex items-center justify-center h-screen"><GameLoader label="Conectando à sua crew" /></div>;
   }
 
   return authenticated ? (
     <>
-      <AnimatedBackground />
       {children}
     </>
   ) : <Navigate to="/" />;
 };
 
 const App = () => {
+  const protectedPage = (page: React.ReactNode) => (
+    <ProtectedRoute>
+      <div className="panel-shell-theme">
+        <GtaCinematicBackground animated={false} />
+        <Navbar />
+        <PanelPage><PreviewBanner />{page}</PanelPage>
+      </div>
+    </ProtectedRoute>
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ThemeInitializer />
+        <GameExperience />
         <TooltipProvider>
+          <Suspense fallback={<div className="grid min-h-screen place-items-center"><GameLoader label="Abrindo sua central" /></div>}>
           <Routes>
             <Route path="/" element={<Login />} />
             
             <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Navbar />
-                <div className="pt-16">
-                  <Dashboard />
-                </div>
-              </ProtectedRoute>
+              protectedPage(<Dashboard />)
             } />
             
             <Route path="/properties" element={
-              <ProtectedRoute>
-                <Navbar />
-                <div className="pt-16">
-                  <Properties />
-                </div>
-              </ProtectedRoute>
+              protectedPage(<Properties />)
             } />
             
             <Route path="/finances" element={
-              <ProtectedRoute>
-                <Navbar />
-                <div className="pt-16">
-                  <Finances />
-                </div>
-              </ProtectedRoute>
+              protectedPage(<Finances />)
             } />
             
             <Route path="/members" element={
-              <ProtectedRoute>
-                <Navbar />
-                <div className="pt-16">
-                  <Members />
-                </div>
-              </ProtectedRoute>
+              protectedPage(<Members />)
             } />
+            <Route path="/organization" element={protectedPage(<Organization />)} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
+          <SiteFooter />
           
           <Toaster />
           <Sonner />

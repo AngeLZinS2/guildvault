@@ -4,156 +4,275 @@
 @tailwind utilities;
 
 @layer base {
-  :root, .theme-blue {
-    --background: 225 25% 10%;
-    --foreground: 210 40% 98%;
-
-    --card: 222 20% 12%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222 20% 12%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 198 78% 49%; /* Blue */
-    --primary-foreground: 210 20% 98%;
-
-    --secondary: 20 100% 60%;
-    --secondary-foreground: 210 20% 98%;
-
-    --muted: 223 15% 17%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 222 20% 16%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 223 15% 17%;
-    --input: 223 15% 17%;
-    --ring: 198 78% 49%; /* Blue */
-
-    --radius: 0.5rem;
-    
-    --guild-primary-color: #1EAEDB; /* Default Blue */
-    --guild-primary-rgb: 30 174 219; /* RGB values for Default Blue */
+  :root, .theme-blue, .theme-purple {
+    --background: 202 37% 10%; --foreground: 42 43% 93%;
+    --card: 202 32% 16%; --card-foreground: 42 43% 93%;
+    --popover: 202 32% 14%; --popover-foreground: 42 43% 93%;
+    --primary: 17 100% 72%; --primary-foreground: 202 37% 10%;
+    --secondary: 159 62% 70%; --secondary-foreground: 202 37% 10%;
+    --muted: 202 23% 22%; --muted-foreground: 195 15% 69%;
+    --accent: 44 95% 70%; --accent-foreground: 202 37% 8%;
+    --destructive: 0 72% 51%; --destructive-foreground: 0 0% 100%;
+    --border: 202 22% 29%; --input: 202 22% 29%; --ring: 17 100% 72%;
+    --radius: 0.5rem; --guild-primary-color: #ff9970; --guild-primary-rgb: 255 153 112;
   }
-
-  .theme-purple {
-    --primary: 264 68% 75%; /* Purple */
-    --ring: 264 68% 75%; /* Purple */
-    --guild-primary-color: #9b87f5;
-    --guild-primary-rgb: 155 135 245; /* RGB values for Purple */
-  }
-
-  .theme-green {
-    --primary: 158 64% 40%; /* Green */
-    --ring: 158 64% 40%; /* Green */
-    --guild-primary-color: #10B981;
-    --guild-primary-rgb: 16 185 129; /* RGB values for Green */
-  }
-
-  .theme-red {
-    --primary: 0 84% 60%; /* Red */
-    --ring: 0 84% 60%; /* Red */
-    --guild-primary-color: #ef4444;
-    --guild-primary-rgb: 239 68 68; /* RGB values for Red */
-  }
-
-  .theme-orange {
-    --primary: 24 95% 53%; /* Orange */
-    --ring: 24 95% 53%; /* Orange */
-    --guild-primary-color: #F97316;
-    --guild-primary-rgb: 249 115 22; /* RGB values for Orange */
-  }
-
-  .theme-pink {
-    --primary: 330 81% 60%; /* Pink */
-    --ring: 330 81% 60%; /* Pink */
-    --guild-primary-color: #EC4899;
-    --guild-primary-rgb: 236 72 153; /* RGB values for Pink */
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
+  .theme-green { --primary: 158 64% 40%; --ring: 158 64% 40%; --guild-primary-color: #10b981; --guild-primary-rgb: 16 185 129; }
+  .theme-red { --primary: 0 84% 60%; --ring: 0 84% 60%; --guild-primary-color: #ef4444; --guild-primary-rgb: 239 68 68; }
+  .theme-orange { --primary: 24 95% 53%; --ring: 24 95% 53%; --guild-primary-color: #f97316; --guild-primary-rgb: 249 115 22; }
+  .theme-pink { --primary: 330 81% 60%; --ring: 330 81% 60%; --guild-primary-color: #ec4899; --guild-primary-rgb: 236 72 153; }
+  * { @apply border-border; }
+  html { color-scheme: dark; }
   body {
-    @apply bg-guild-dark text-white;
-    background-image: linear-gradient(to bottom, rgba(18, 20, 32, 0.95), rgba(26, 28, 41, 0.9)), url('/los-santos-skyline.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    @apply bg-background text-foreground antialiased;
+    min-width: 320px;
+    font-family: "Chakra Petch", system-ui, sans-serif;
+    background: #101c23;
   }
+  h1, h2, h3, .font-display { font-family: "Barlow Condensed", Impact, sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+  button, a, input, select, textarea { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background; }
 }
 
 @layer components {
-  .guild-card {
-    @apply relative bg-guild-surface/80 backdrop-blur-sm border border-guild-primary/20 rounded-lg shadow-lg overflow-hidden;
-    animation: pulse-glow 3s ease-in-out infinite;
-  }
-  
-  .guild-input {
-    @apply bg-guild-dark/70 border-guild-primary/30 text-white placeholder:text-gray-400 focus:border-guild-primary hover:border-guild-primary/60 transition-colors;
-  }
-  
-  .guild-button-primary {
-    @apply bg-guild-primary hover:bg-guild-primary/80 text-white;
-  }
-  
-  .guild-button-secondary {
-    @apply bg-guild-secondary hover:bg-guild-secondary/80 text-white;
-  }
-  
-  .guild-button-ghost {
-    @apply bg-transparent hover:bg-white/10 text-white border border-white/20;
-  }
-
-  .glow-border {
-    @apply guild-primary-shadow;
-  }
-  
-  /* Add a class for elements that should use the primary color */
-  .guild-primary-bg {
-    background-color: var(--guild-primary-color);
-  }
-  
-  .guild-primary-text {
-    color: var(--guild-primary-color);
-  }
-  
-  .guild-primary-border {
-    border-color: var(--guild-primary-color);
-  }
+  .app-content { @apply min-h-screen px-4 pb-12 pt-32 sm:px-6 lg:px-10; }
+  .guild-card { @apply relative overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-[0_8px_0_rgba(0,0,0,0.12)]; transition: border-color .2s, box-shadow .2s; }
+  .guild-card::before { content: ""; @apply pointer-events-none absolute inset-x-0 top-0 h-px; background: linear-gradient(90deg, transparent, rgb(var(--guild-primary-rgb) / .65), transparent); }
+  .guild-input { @apply h-11 border-white/10 bg-background/70 text-foreground placeholder:text-muted-foreground transition-colors hover:border-white/20 focus:border-primary; }
+  .guild-button-primary { @apply min-h-11 bg-primary font-semibold text-primary-foreground shadow-[0_8px_28px_rgb(var(--guild-primary-rgb)/.22)] hover:bg-primary/90; }
+  .guild-button-secondary { @apply min-h-11 bg-accent font-semibold text-accent-foreground hover:bg-accent/90; }
+  .guild-button-ghost { @apply min-h-11 border border-white/10 bg-transparent text-foreground hover:bg-white/5; }
+  .guild-primary-bg { background-color: var(--guild-primary-color); }
+  .guild-primary-text { color: var(--guild-primary-color); }
+  .guild-primary-border { border-color: var(--guild-primary-color); }
+  .section-kicker { @apply mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-secondary; }
+  .section-kicker::before { content: ""; @apply h-px w-7 bg-secondary; }
+  .metric-value { @apply font-display text-3xl tabular-nums text-foreground; }
+  .data-row { @apply rounded-lg border border-white/5 bg-background/35 transition-colors hover:border-white/10 hover:bg-background/60; }
 }
 
-/* YouTube player styling */
-#youtube-player {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  pointer-events: none;
+/* Authenticated GTA-inspired command center. Login styles remain outside this scope. */
+.panel-shell-theme {
+  --background: 252 40% 5%; --foreground: 250 30% 94%;
+  --card: 252 34% 11%; --card-foreground: 250 30% 94%;
+  --popover: 252 34% 9%; --popover-foreground: 250 30% 94%;
+  --primary: 263 70% 58%; --primary-foreground: 0 0% 100%;
+  --secondary: 258 90% 76%; --secondary-foreground: 252 45% 8%;
+  --muted: 252 21% 18%; --muted-foreground: 244 17% 67%;
+  --accent: 350 89% 60%; --accent-foreground: 252 45% 7%;
+  --border: 263 56% 34%; --input: 252 22% 22%; --ring: 263 70% 58%;
+  --guild-primary-color: #7c3aed; --guild-primary-rgb: 124 58 237;
+  min-height: 100vh;
+  color: #eeeaf8;
+  background: #090713;
+}
+.panel-stage { position: relative; z-index: 1; overflow: clip; }
+.panel-stage > .container { max-width: 1480px; padding-top: 0 !important; }
+.panel-route-trace { position: fixed; z-index: 70; inset: 0 0 auto; height: 2px; transform-origin: left; pointer-events: none; background: linear-gradient(90deg, transparent, #a78bfa 28%, #f43f5e 72%, transparent); box-shadow: 0 0 20px rgba(244,63,94,.48); }
+.panel-stage h1 { position: relative; width: fit-content; color: #f5f2ff; font-family: "Barlow Condensed", sans-serif; font-size: clamp(2.7rem, 5vw, 5.6rem); font-weight: 900; line-height: .82; letter-spacing: -.035em; text-transform: uppercase; text-shadow: 5px 6px 0 rgba(5,3,12,.58); }
+.panel-stage h1::after { content: ""; position: absolute; left: 0; bottom: -.75rem; width: 42%; height: 4px; transform: skewX(-24deg); background: #f43f5e; box-shadow: 34px 0 0 #7c3aed; }
+.panel-stage header h1 + p { margin-top: 1.25rem; }
+.panel-stage .guild-card { border: 1px solid rgba(167,139,250,.22); border-radius: 14px 5px 14px 5px; background: linear-gradient(145deg, rgba(30,25,55,.94), rgba(13,10,28,.96)); box-shadow: 0 18px 48px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.04); }
+.panel-stage .guild-card::before { height: 2px; background: linear-gradient(90deg, #7c3aed, #f43f5e 65%, transparent); }
+.panel-stage .guild-card:hover { border-color: rgba(244,63,94,.46); box-shadow: 0 22px 55px rgba(0,0,0,.34), 0 0 0 1px rgba(124,58,237,.12); }
+.panel-stage .metric-value { color: #fff; font-size: clamp(2.25rem, 3vw, 3.5rem); letter-spacing: -.025em; }
+.panel-stage [role="tablist"] { min-height: 48px; border: 1px solid rgba(167,139,250,.2); border-radius: 10px 3px 10px 3px; background: rgba(13,10,28,.82); box-shadow: 0 12px 30px rgba(0,0,0,.22); }
+.panel-stage [role="tab"] { min-height: 38px; cursor: pointer; transition: color 150ms ease, background-color 150ms ease, transform 100ms ease; }
+.panel-stage [role="tab"]:active { transform: scale(.97); }
+.panel-stage [role="tab"][data-state="active"] { color: #fff; background: rgba(124,58,237,.24); box-shadow: inset 0 -2px #f43f5e; }
+.panel-stage table thead { background: rgba(7,5,17,.5); }
+.panel-stage table tbody tr { transition: background-color 150ms ease, box-shadow 150ms ease; }
+.panel-stage table tbody tr:hover { background: rgba(124,58,237,.08); box-shadow: inset 3px 0 #f43f5e; }
+.panel-stage button:not(:disabled), .panel-stage a { cursor: pointer; transition-duration: 150ms; }
+.panel-stage button:not(:disabled):active { transform: scale(.97); }
+
+.gta-cinematic-background { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #171017 url('/hyperframes/gta-vice-city/assets/night.jpg') 62% 38% / cover no-repeat; }
+.gta-cinematic-scene { display: block; width: 100%; height: 100%; border: 0; }
+.gta-cinematic-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,7,19,.64), rgba(9,7,19,.16) 72%), linear-gradient(180deg, rgba(9,7,19,.16), rgba(9,7,19,.28) 40%, rgba(9,7,19,.78)); }
+.panel-shell-theme .santos-scene { border: 1px solid rgba(167,139,250,.24); border-radius: 14px 5px 14px 5px; background: #171017; box-shadow: 0 18px 48px rgba(0,0,0,.25); }
+.panel-shell-theme .scene-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.panel-shell-theme .scene-photo-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(9,7,19,.15), transparent 35%, rgba(9,7,19,.85)); }
+.panel-shell-theme .scene-hud > span { background: rgba(9,7,19,.85); color: #eeeaf8; }
+.panel-shell-theme .scene-areas { position: absolute; z-index: 2; top: 58px; left: 15px; display: flex; gap: 6px; }
+.panel-shell-theme .scene-areas button { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; background: rgba(9,7,19,.8); color: #ddd6e8; font-size: 11px; }
+.panel-shell-theme .scene-areas button:hover, .panel-shell-theme .scene-areas button[aria-pressed=true] { border-color: #a78bfa; color: #fff; background: rgba(82,44,124,.92); }
+.panel-shell-theme .scene-caption { border-left-color: #a78bfa; background: rgba(9,7,19,.88); }
+.panel-shell-theme .scene-marker { color: #c4b5fd; }
+.panel-shell-theme .scene-link { color: #ddd6fe; }
+
+.ops-topbar { position: fixed; inset: 0 0 auto; z-index: 60; border-bottom: 1px solid rgba(167,139,250,.18); background: rgba(9,7,19,.86); backdrop-filter: blur(18px) saturate(1.25); }
+.ops-topbar::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, #7c3aed, #f43f5e 48%, transparent 82%); }
+.ops-topbar-inner { max-width: 1540px; height: 72px; margin: auto; padding: 0 28px; display: grid; grid-template-columns: minmax(230px,1fr) auto minmax(230px,1fr); align-items: center; gap: 20px; }
+.ops-brand { display: flex; align-items: center; gap: 11px; width: fit-content; color: #f5f2ff; cursor: pointer; }
+.ops-brand-mark { display: grid; width: 42px; height: 42px; place-items: center; transform: rotate(-4deg); border: 1px solid rgba(244,63,94,.55); border-radius: 10px 3px 10px 3px; color: #fda4af; background: linear-gradient(145deg, rgba(244,63,94,.18), rgba(124,58,237,.18)); box-shadow: 4px 4px 0 rgba(124,58,237,.2); transition: transform 180ms cubic-bezier(.2,0,0,1), border-color 180ms ease; }
+.ops-brand:hover .ops-brand-mark { transform: rotate(0) translateY(-2px); border-color: #f43f5e; }
+.ops-brand-mark svg { width: 22px; }
+.ops-brand-copy { display: flex; flex-direction: column; text-align: left; }
+.ops-brand-copy strong { font-family: "Barlow Condensed", sans-serif; font-size: 25px; line-height: .9; letter-spacing: -.02em; text-transform: uppercase; }
+.ops-brand-copy small { margin-top: 4px; color: #9b93b4; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+.ops-desktop-nav { display: flex; align-items: stretch; align-self: stretch; }
+.ops-nav-link { position: relative; display: flex; min-width: 108px; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; color: #9f98b7; font-size: 13px; font-weight: 600; cursor: pointer; transition: color 150ms ease, background-color 150ms ease; }
+.ops-nav-link:hover { color: #f5f2ff; background: rgba(124,58,237,.08); }
+.ops-nav-link svg { width: 16px; transition: transform 180ms cubic-bezier(.2,0,0,1); }
+.ops-nav-link:hover svg { transform: translateY(-2px) rotate(-4deg); }
+.ops-nav-link.is-active { color: #fff; }
+.ops-nav-link i { position: absolute; inset: auto 15px 0; height: 3px; border-radius: 3px 3px 0 0; background: #f43f5e; box-shadow: 0 0 16px rgba(244,63,94,.5); }
+.ops-topbar-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.ops-live-status { display: flex; align-items: center; gap: 7px; margin-right: 5px; color: #a78bfa; font-size: 11px; }
+.ops-live-status svg { width: 15px; color: #4ade80; }
+.ops-icon-button, .ops-profile-button, .ops-mobile-menu { border: 1px solid rgba(167,139,250,.16); color: #c9c3dc; background: rgba(255,255,255,.025); cursor: pointer; }
+.ops-icon-button:hover, .ops-profile-button:hover, .ops-mobile-menu:hover { color: #fff; border-color: rgba(244,63,94,.44); background: rgba(244,63,94,.1); }
+.ops-profile-button { gap: 9px; padding-inline: 9px 11px; }
+.ops-profile-button > svg { width: 14px; }
+.ops-avatar { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 7px 2px 7px 2px; color: #ddd6fe; background: rgba(124,58,237,.27); }
+.ops-avatar svg { width: 16px; }
+.ops-mobile-menu { display: none; }
+.ops-context-strip { display: flex; height: 25px; align-items: center; justify-content: center; gap: 10px; border-top: 1px solid rgba(255,255,255,.035); color: #7f7898; font-size: 10px; letter-spacing: .05em; }
+.ops-context-strip strong { color: #d8d2e8; font-weight: 600; }
+.ops-context-strip i { width: 3px; height: 3px; border-radius: 50%; background: #f43f5e; }
+.ops-dropdown { border-color: rgba(167,139,250,.24) !important; border-radius: 12px 4px 12px 4px !important; background: rgba(14,10,29,.98) !important; box-shadow: 0 24px 70px rgba(0,0,0,.5) !important; }
+.ops-dropdown [role="menuitem"], .ops-dropdown button { cursor: pointer; }
+.ops-dropdown [role="separator"] { background: rgba(167,139,250,.13); }
+.ops-dropdown [role="menuitem"]:focus { color: #fff; background: rgba(124,58,237,.18); }
+.ops-dropdown-item { min-height: 54px; gap: 11px; border-radius: 8px 3px 8px 3px !important; }
+.ops-dropdown-item > svg { width: 18px; color: #a78bfa; }
+.ops-dropdown-item > span, .ops-dropdown [role="menuitem"] > span { display: flex; flex-direction: column; }
+.ops-dropdown strong, .ops-dropdown label > span { font-size: 13px; }
+.ops-dropdown small { color: #8f88a6; font-size: 10px; font-weight: 400; }
+.ops-dropdown-item.is-current { color: #fff; background: rgba(244,63,94,.11); box-shadow: inset 3px 0 #f43f5e; }
+.ops-dropdown-item.ops-logout > svg { color: #fb7185; }
+
+@media (max-width: 1050px) {
+  .ops-topbar-inner { grid-template-columns: 1fr auto; }
+  .ops-desktop-nav, .ops-live-status { display: none; }
+  .ops-mobile-menu { display: inline-flex; }
+}
+@media (max-width: 640px) {
+  .app-content { padding-top: 7.4rem; padding-inline: 1rem; }
+  .ops-topbar-inner { height: 64px; padding-inline: 16px; }
+  .ops-context-strip { height: 23px; justify-content: flex-start; padding-inline: 17px; overflow: hidden; white-space: nowrap; }
+  .ops-brand-copy strong { font-size: 22px; }
+  .ops-brand-copy small, .ops-icon-button, .ops-profile-button { display: none; }
+  .panel-stage h1 { font-size: 3rem; }
+  .panel-stage .guild-card { border-radius: 10px 3px 10px 3px; }
+  .panel-stage [role="tablist"] { width: 100%; overflow-x: auto; }
+  .gta-cinematic-background { background-position: 58% 38%; }
 }
 
-#youtube-player iframe {
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  transform: scale(1.2);
+.santos-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #101c23; pointer-events: none; }
+.map-grid { position: absolute; inset: -50%; transform: rotate(-18deg); background-image: repeating-linear-gradient(0deg, transparent 0 79px, #ffffff08 80px 82px), repeating-linear-gradient(90deg, transparent 0 119px, #ffffff08 120px 122px); }
+.map-route { position: absolute; width: 70vw; height: 90vh; right: -15vw; top: 5vh; border: 35px double #87dfbf0b; border-radius: 40%; transform: rotate(-30deg); }
+.map-label { position: absolute; right: 3vw; bottom: 9vh; font-family: "Barlow Condensed", sans-serif; font-size: 7vw; font-weight: 800; transform: rotate(-18deg); color: #ffffff03; }
+.game-login { padding: 36px 4vw 70px; min-height: 100dvh; }
+.login-layout { max-width: 1500px; margin: auto; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, .8fr); gap: clamp(28px, 5vw, 86px); align-items: center; }
+.game-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; color: #9ce7cd; }
+.game-brand > span:first-of-type { font-family: "Barlow Condensed", sans-serif; font-weight: 900; font-size: 32px; letter-spacing: -1px; line-height: 1; color: #fff3dd; }
+.game-brand > span:first-of-type > span { color: #ff9970; }
+.edition-tag { margin-left: auto; font-size: 12px; color: #c3d2d4; border: 1px solid #ffffff25; border-radius: 4px; padding: 7px 10px; transform: rotate(-3deg); }
+.world-headline { position: relative; margin-bottom: 28px; }
+.world-headline h1 { font-size: clamp(48px, 5.4vw, 83px); line-height: .94; color: #fff3dd; text-transform: uppercase; text-shadow: 3px 4px 0 #07131a; transform: rotate(-2deg); transform-origin: left bottom; animation: title-slam .7s cubic-bezier(.16,1,.3,1) both; }
+.world-headline p { color: #c0d1d2; margin-top: 21px; font-size: 15px; }
+.wanted-stars { display: flex; gap: 5px; color: #ffce76; margin-bottom: 16px; }
+.wanted-stars svg { fill: currentColor; animation: star-pop .55s cubic-bezier(.2,1.6,.4,1) both; }
+.login-access { position: relative; padding: 36px; background: #182a33; border: 1px solid #6d91945e; box-shadow: 10px 10px 0 #060f1666; border-radius: 8px; animation: ticket-in .8s cubic-bezier(.16,1,.3,1) both; }
+.login-access::before { content: ""; position: absolute; top: -1px; left: 24px; width: 70px; height: 5px; background: #ff9970; }
+.access-stamp { display: flex; gap: 15px; align-items: center; color: #9ce7cd; margin-bottom: 28px; }
+.access-stamp span { font-size: 12px; color: #b8cccc; }
+.access-stamp strong { color: #f8edd9; font-size: 15px; }
+.access-title { font-size: 46px; line-height: 1; }
+.access-note { margin-top: 28px; padding-top: 20px; border-top: 1px dashed #ffffff25; font-size: 12px; color: #ffe3b8; line-height: 1.8; }
+.access-note span { color: #b8cccc; }
+.mission-button { height: 52px; font-size: 15px; box-shadow: 0 4px 0 #935638; }
+.mission-button svg { transition: transform .25s; }
+.mission-button:hover svg { transform: translateX(5px); }
+.world-footer { display: flex; justify-content: space-between; margin-top: 14px; color: #a8c4c5; font-size: 11px; }
+.santos-scene { position: relative; height: 370px; border: 3px solid #09151b; border-radius: 10px; overflow: hidden; box-shadow: 5px 6px 0 #071219; isolation: isolate; }
+.city-art { position: absolute; width: 100%; height: 100%; inset: 0; }
+.scene-hud { position: absolute; z-index: 2; inset: 15px 15px auto; display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.scene-hud > span, .scene-hud button { display: flex; align-items: center; gap: 7px; padding: 8px 10px; color: #f8edd9; background: #11232be8; border: 1px solid #ffffff30; border-radius: 4px; }
+.scene-hud button { transition: transform .2s; }
+.scene-hud button:hover { transform: rotate(-3deg); }
+.scene-caption { position: absolute; z-index: 2; left: 16px; right: 16px; bottom: 14px; background: #11232be8; padding: 10px 14px; border-left: 3px solid #ffce76; animation: caption-in .35s ease-out both; }
+.scene-marker { color: #ffce76; font-size: 10px; }
+.scene-caption h3 { font-size: 21px; line-height: 1.2; color: #fff3dd; }
+.scene-caption p { font-size: 11px; color: #bdd0d1; margin-top: 4px; max-width: 60ch; }
+.scene-pins { position: absolute; inset: 0 0 75px; }
+.scene-pin { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; transform: translate(-50%, -50%) rotate(-6deg); color: #152730; background: #ffce76; border: 3px solid #13242e; border-radius: 12px 12px 12px 0; box-shadow: 3px 4px 0 #08192366; transition: transform .25s cubic-bezier(.2,1.8,.4,1), background .2s; }
+.scene-pin:hover, .scene-pin:focus-visible, .scene-pin.is-selected { background: #99ebce; transform: translate(-50%, -65%) rotate(0) scale(1.12); z-index: 3; }
+.scene-pin > span { position: absolute; top: 48px; white-space: nowrap; padding: 3px 7px; background: #13242e; color: #fff3dd; border-radius: 3px; font-size: 10px; opacity: 0; transform: translateY(-4px); transition: .2s; }
+.scene-pin:hover > span, .scene-pin:focus-visible > span { opacity: 1; transform: translateY(0); }
+.city-cloud { animation: cloud-drift 14s ease-in-out infinite alternate; }
+.city-palm { transform-origin: 110px 460px; animation: palm-sway 6s ease-in-out infinite alternate; }
+.city-palm-right { transform-origin: 815px 520px; animation-delay: -2s; }
+.city-car { animation: car-arrive 1.5s cubic-bezier(.16,1,.3,1) both; }
+.city-sun { animation: sun-rise 1.4s ease-out both; }
+.scene-link { display: flex; align-items: center; gap: 8px; color: #99ebce; font-size: 12px; margin-top: 10px; }
+.scene-link:hover { color: #ffce76; }
+.game-button { transition: transform .16s, background-color .2s, box-shadow .2s; }
+.game-button:hover:not(:disabled) { transform: translateY(-2px); }
+.game-button:active:not(:disabled) { transform: translateY(1px) scale(.97); }
+.guild-card:hover { border-color: #9ce7cd45; box-shadow: 0 8px 0 #0002, 0 0 0 1px #9ce7cd10; }
+.guild-card::before { background: linear-gradient(90deg, #ff9970, #9ce7cd, transparent); }
+.guild-input { height: 48px; border-radius: 4px; }
+.guild-input:focus { box-shadow: 4px 4px 0 #ff997033; }
+.motion-control { position: fixed; z-index: 45; bottom: 12px; right: 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #ffffff25; background: #10222bef; padding: 9px 12px; border-radius: 5px; color: #c2d7d6; font-size: 10px; }
+.route-sweep { position: fixed; z-index: 60; left: 0; top: 0; height: 3px; width: 100%; pointer-events: none; background: #ffce76; transform-origin: left; animation: route-load .75s ease-out both; }
+.operation-banner { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 0 0 30px; align-items: stretch; }
+.operation-copy { display: flex; flex-direction: column; justify-content: center; padding: 24px 0; }
+.operation-copy h2 { font-size: clamp(36px, 4vw, 60px); line-height: .98; text-transform: uppercase; color: #fff0d4; }
+.operation-copy > p { margin: 14px 0 20px; font-size: 14px; color: #b7d0d2; max-width: 42ch; }
+.operation-shortcuts { display: flex; flex-wrap: wrap; gap: 10px; }
+.operation-shortcuts button { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid #ffffff25; border-radius: 5px; background: #22373e; font-size: 12px; transition: transform .2s, background .2s; }
+.operation-shortcuts button:hover { transform: translateY(-4px) rotate(-2deg); background: #365650; }
+.santos-scene-compact { height: 300px; }
+.game-sidebar { background: #11212a !important; }
+.game-sidebar nav button { transition: transform .2s, background .2s; }
+.game-sidebar nav button:hover { transform: translateX(4px); }
+.game-sidebar nav button[aria-current=page] { background: #ff99701a; border-left: 3px solid #ff9970; }
+.game-sidebar nav button[aria-current=page] > span:last-child { background: #ffce76; box-shadow: none; }
+.game-mobile-header { background: #11212af5 !important; }
+.crew-badge { margin-top: 28px; padding: 20px 12px; border-top: 1px dashed #ffffff20; }
+.crew-badge strong { font-family: "Barlow Condensed", sans-serif; font-size: 28px; color: #ffce76; }
+.crew-badge p { font-size: 11px; color: #b0c5c8; }
+@keyframes title-slam { from { opacity: 0; transform: rotate(-5deg) scale(1.15) translateY(-14px); } to { opacity: 1; transform: rotate(-2deg); } }
+@keyframes star-pop { from { opacity: 0; transform: scale(0) rotate(-90deg); } to { opacity: 1; transform: scale(1); } }
+@keyframes ticket-in { from { opacity: 0; transform: translateX(35px) rotate(3deg); } to { opacity: 1; transform: none; } }
+@keyframes caption-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes cloud-drift { to { transform: translateX(35px); } }
+@keyframes palm-sway { from { transform: rotate(-1deg); } to { transform: rotate(2deg); } }
+@keyframes car-arrive { from { transform: translateX(500px); } to { transform: none; } }
+@keyframes sun-rise { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: none; } }
+@keyframes route-load { 0% { transform: scaleX(0); } 75% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+html[data-motion=paused] *, html[data-motion=paused] *::before, html[data-motion=paused] *::after { animation: none !important; transition: none !important; }
+@media (max-width: 1023px) {
+  .game-login { padding: 24px 24px 65px; }
+  .login-layout { grid-template-columns: minmax(0, 1fr) minmax(290px, .9fr); gap: 28px; }
+  .edition-tag { display: none; }
+  .world-headline h1 { font-size: 50px; }
+  .santos-scene { height: 300px; }
+  .login-access { padding: 25px; }
+}
+@media (max-width: 700px) {
+  .game-login { padding: 20px 18px 70px; }
+  .login-layout { grid-template-columns: minmax(0, 1fr); gap: 25px; }
+  .game-brand { margin-bottom: 22px; }
+  .edition-tag { display: block; }
+  .world-headline h1 { font-size: clamp(45px, 11vw, 65px); }
+  .world-headline p { font-size: 12px; }
+  .santos-scene { height: 270px; }
+  .world-footer { font-size: 10px; }
+  .login-access { padding: 28px 24px; }
+  .access-stamp { margin-bottom: 20px; }
+  .operation-banner { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .operation-copy { padding: 0 0 10px; }
+  .scene-caption { left: 10px; right: 10px; padding: 10px 12px; }
+  .scene-caption h3 { font-size: 20px; }
+  .scene-caption p { font-size: 10px; }
+  .motion-control span { display: none; }
 }
 
-@media (min-aspect-ratio: 16/9) {
-  #youtube-player iframe {
-    height: 56.25vw; /* 16:9 */
-  }
-}
+@keyframes enter-panel { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.motion-enter { animation: enter-panel 520ms cubic-bezier(.16, 1, .3, 1) both; }
+.motion-enter-delay { animation-delay: 90ms; }
 
-@media (max-aspect-ratio: 16/9) {
-  #youtube-player iframe {
-    width: 177.78vh; /* 16:9 */
-  }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

@@ -21,8 +21,8 @@ export const ThemeInitializer = () => {
     
     // Update CSS variable for guild-primary in HTML root element
     const themeColors = {
-      'theme-blue': { hex: '#1EAEDB', rgb: '30 174 219' },
-      'theme-purple': { hex: '#9b87f5', rgb: '155 135 245' },
+      'theme-blue': { hex: '#ff9970', rgb: '255 153 112' },
+      'theme-purple': { hex: '#ff9970', rgb: '255 153 112' },
       'theme-green': { hex: '#10B981', rgb: '16 185 129' },
       'theme-red': { hex: '#ef4444', rgb: '239 68 68' },
       'theme-orange': { hex: '#F97316', rgb: '249 115 22' },

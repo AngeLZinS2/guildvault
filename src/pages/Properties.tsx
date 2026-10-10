@@ -1,5 +1,7 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,18 +10,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import { rpRequest } from "@/services/rpService";
 import { 
   fetchProperties, 
   addPropertyWithItems, 
   addItemToProperty,
   uploadItemIcon,
-  updatePropertyItem,
   deletePropertyItem,
   Property,
   Item,
 } from "@/services/propertyService";
 
 export default function Properties() {
+  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  const canEdit = isAdmin && !adminLoading;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const emptyStock = searchParams.get('stock') === 'empty';
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
+  const uploading = useRef(false);
+  const [movementItem, setMovementItem] = useState<Item | null>(null);
+  const [movementType, setMovementType] = useState('in');
+  const [movementQuantity, setMovementQuantity] = useState('1');
+  const [movementError, setMovementError] = useState('');
+  const [deleteItem, setDeleteItem] = useState<Item | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -38,15 +52,12 @@ export default function Properties() {
   // Estado para novos itens
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   
-  useEffect(() => {
-    loadProperties();
-  }, []);
-  
-  const loadProperties = async () => {
+  const loadProperties = useCallback(async () => {
     setLoading(true);
     const result = await fetchProperties();
     if (result.success) {
       setProperties(result.data);
+      setSelectedProperty(current => current ? result.data.find((property: Property) => property.id === current.id) ?? null : null);
     } else {
       toast({
         title: "Erro ao carregar propriedades",
@@ -55,12 +66,45 @@ export default function Properties() {
       });
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => { void loadProperties(); }, [loadProperties]);
+
+  const mutate = async (operation: () => Promise<void>) => {
+    if (!canEdit || busy.current || uploading.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      await operation();
+    } catch (error) {
+      toast({ title: 'Erro ao salvar', description: error instanceof Error ? error.message : 'Não foi possível concluir a operação.', variant: 'destructive' });
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
   };
+
+  const validQuantity = (quantity: number) => Number.isSafeInteger(quantity) && quantity >= 0 && quantity <= 2147483647;
+  const syncItems = (propertyId: string, transform: (items: Item[]) => Item[]) => {
+    const update = (property: Property) => property.id === propertyId ? { ...property, items: transform(property.items) } : property;
+    setProperties(previous => previous.map(update));
+    setSelectedProperty(previous => previous ? update(previous) : null);
+  };
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterType('all');
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.delete('stock'); return next; });
+  };
+  const visibleItems = (property: Property) => (property.items ?? []).filter(item =>
+    (!emptyStock || item.quantity === 0) && (!searchTerm.trim() ||
+      property.number.toLowerCase().includes(searchTerm.trim().toLowerCase()) ||
+      property.location.toLowerCase().includes(searchTerm.trim().toLowerCase()) ||
+      item.name.toLowerCase().includes(searchTerm.trim().toLowerCase())));
 
   // Handle icon upload for new item
   const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>, isNewProperty: boolean = false) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !canEdit || busy.current || uploading.current) return;
     
     // Check if file is an image
     if (!file.type.startsWith("image/")) {
@@ -82,10 +126,12 @@ export default function Properties() {
       return;
     }
     
+    uploading.current = true;
     setIconUploading(true);
     
     try {
       const iconUrl = await uploadItemIcon(file);
+      if (!iconUrl) throw new Error('Falha no upload');
       
       if (iconUrl) {
         if (isNewProperty) {
@@ -106,16 +152,19 @@ export default function Properties() {
         variant: "destructive"
       });
     } finally {
+      uploading.current = false;
       setIconUploading(false);
     }
   };
 
   // Filter properties based on search and filter
   const filteredProperties = properties.filter((property) => {
-    const matchesSearch = property.number.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         property.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const query = searchTerm.trim().toLowerCase();
+    const matchesSearch = property.number.toLowerCase().includes(query) ||
+                         property.location.toLowerCase().includes(query) ||
+                         property.items?.some(item => item.name.toLowerCase().includes(query));
     const matchesType = filterType === "all" || property.type === filterType;
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && (!emptyStock || visibleItems(property).length > 0);
   });
 
   const handlePropertyClick = (property: Property) => {
@@ -150,16 +199,16 @@ export default function Properties() {
 
   // Adicionar novo item à lista de itens da nova propriedade
   const addItemToPropertyList = () => {
-    if (!newItem.name) {
+    if (!canEdit || saving || iconUploading || !newItem.name.trim() || !validQuantity(newItem.quantity)) {
       return;
     }
-    setNewPropertyItems([...newPropertyItems, { ...newItem }]);
+    setNewPropertyItems([...newPropertyItems, { ...newItem, name: newItem.name.trim() }]);
     setNewItem({ name: "", quantity: 1 });
   };
 
   // Adicionar nova propriedade
   const addNewProperty = async () => {
-    if (!newPropertyNumber || !newPropertyType || !newPropertyLocation) {
+    if (!newPropertyNumber.trim() || !newPropertyType.trim() || !newPropertyLocation.trim()) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -169,12 +218,13 @@ export default function Properties() {
     }
 
     const newProperty: Omit<Property, 'id'> = {
-      number: newPropertyNumber,
-      type: newPropertyType,
-      location: newPropertyLocation,
+      number: newPropertyNumber.trim(),
+      type: newPropertyType.trim(),
+      location: newPropertyLocation.trim(),
       items: []
     };
 
+    await mutate(async () => {
     const result = await addPropertyWithItems(newProperty, newPropertyItems);
     
     if (result.success) {
@@ -186,49 +236,60 @@ export default function Properties() {
       setIsAddDialogOpen(false);
       
       // Reload properties
-      loadProperties();
+      setNewItem({ name: '', quantity: 1 });
+      await loadProperties();
+    } else {
+      await loadProperties();
     }
+    });
   };
 
   // Adicionar novo item ao inventário de uma propriedade existente
   const handleAddItemToProperty = async () => {
-    if (!selectedProperty || !newItem.name) {
+    if (!selectedProperty || !newItem.name.trim() || !validQuantity(newItem.quantity)) {
       toast({
         title: "Erro",
-        description: "Selecione uma propriedade e informe o nome do item",
+        description: "Informe o nome e uma quantidade inteira não negativa",
         variant: "destructive"
       });
       return;
     }
 
-    const result = await addItemToProperty(selectedProperty.id, newItem);
+    await mutate(async () => {
+    const result = await addItemToProperty(selectedProperty.id, { ...newItem, name: newItem.name.trim() });
+    if (!result.success) throw result.error;
     
     if (result.success) {
       toast({
         title: "Item adicionado",
         description: `${newItem.name} foi adicionado ao inventário.`
       });
+      syncItems(selectedProperty.id, items => [...items, result.data]);
       
       setNewItem({ name: "", quantity: 1 });
       setIsAddItemDialogOpen(false);
       
       // Reload properties to update the UI
-      loadProperties();
+      await loadProperties();
     }
+    });
   };
 
   // Handle item deletion
   const handleDeleteItem = async (itemId: string) => {
+    await mutate(async () => {
     const result = await deletePropertyItem(itemId);
     
     if (result.success) {
+      if (selectedProperty) syncItems(selectedProperty.id, items => items.filter(item => item.id !== itemId));
       toast({
         title: "Item removido",
         description: "Item removido com sucesso."
       });
       
       // Reload properties to update the UI
-      loadProperties();
+      setDeleteItem(null);
+      await loadProperties();
     } else {
       toast({
         title: "Erro ao remover item",
@@ -236,14 +297,39 @@ export default function Properties() {
         variant: "destructive"
       });
     }
+    });
+  };
+
+  const handleMovement = async () => {
+    setMovementError('');
+    const amount = movementQuantity.trim() === '' ? NaN : Number(movementQuantity);
+    const current = selectedProperty?.items.find(item => item.id === movementItem?.id);
+    if (!current?.id || !validQuantity(amount) || amount === 0 || (movementType === 'out' && amount > current.quantity)) {
+      setMovementError('Use um inteiro positivo até 2147483647. A saída não pode exceder o estoque.');
+      return;
+    }
+    const quantity = current.quantity + (movementType === 'out' ? -amount : amount);
+    if (!validQuantity(quantity)) {
+      setMovementError('O estoque final deve estar entre 0 e 2147483647 unidades.');
+      return;
+    }
+    await mutate(async () => {
+      await rpRequest('stock', 'POST', { item_id: current.id, quantity: amount, kind: movementType === 'out' ? 'exit' : 'entry', reason: 'Ajuste registrado no inventário da propriedade' });
+      const update = (property: Property): Property => ({ ...property, items: property.items.map(item => item.id === current.id ? { ...item, quantity } : item) });
+      setProperties(previous => previous.map(property => property.id === selectedProperty.id ? update(property) : property));
+      setSelectedProperty(previous => previous ? update(previous) : null);
+      setMovementItem(null);
+      await loadProperties();
+      toast({ title: 'Estoque atualizado' });
+    });
   };
 
   return (
-    <div className="container mx-auto px-4 pt-20 pb-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Propriedades</h1>
+    <div className="mx-auto max-w-[1400px] motion-enter">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <div><h1 className="text-4xl font-bold">Seu território</h1><p className="mt-1 text-sm text-muted-foreground">Propriedades, bases e tudo o que a crew conquistou.</p></div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={open => { if (!saving && !iconUploading) { setIsAddDialogOpen(open); setNewItem({ name: '', quantity: 1 }); } }}>
           <DialogTrigger asChild>
             <Button className="guild-button-primary">
               <Plus className="h-5 w-5 mr-2" /> Adicionar Propriedade
@@ -253,7 +339,7 @@ export default function Properties() {
             <DialogHeader>
               <DialogTitle>Adicionar Nova Propriedade</DialogTitle>
             </DialogHeader>
-            <form className="space-y-4 py-4">
+            <form className="space-y-4 py-4" onSubmit={event => event.preventDefault()}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="house-number" className="text-sm font-medium">
@@ -312,9 +398,10 @@ export default function Properties() {
                         type="number" 
                         placeholder="Qtd" 
                         className="guild-input w-24" 
-                        min="1"
-                        value={newItem.quantity}
-                        onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                        min="0"
+                        step="1"
+                        value={Number.isNaN(newItem.quantity) ? '' : newItem.quantity}
+                        onChange={(e) => setNewItem({...newItem, quantity: e.target.valueAsNumber})}
                       />
                     </div>
                     
@@ -343,7 +430,8 @@ export default function Properties() {
                         size="sm" 
                         className="guild-button-ghost"
                         onClick={addItemToPropertyList}
-                        disabled={!newItem.name || iconUploading}
+                        type="button"
+                        disabled={!newItem.name.trim() || !validQuantity(newItem.quantity) || iconUploading || saving}
                       >
                         {iconUploading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -388,6 +476,7 @@ export default function Properties() {
               <Button 
                 variant="outline" 
                 onClick={() => setIsAddDialogOpen(false)}
+                disabled={saving || iconUploading}
                 className="guild-button-ghost"
               >
                 Cancelar
@@ -395,19 +484,21 @@ export default function Properties() {
               <Button 
                 className="guild-button-primary" 
                 onClick={addNewProperty}
+                disabled={saving || iconUploading}
               >
                 Adicionar Propriedade
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Pesquisar por número ou localização..."
+            placeholder="Pesquisar por número, localização ou item..."
+            aria-label="Pesquisar por número, localização ou item"
             className="guild-input pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -415,7 +506,7 @@ export default function Properties() {
         </div>
         
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="guild-input w-full sm:w-48">
+          <SelectTrigger className="guild-input w-full sm:w-48" aria-label="Filtrar por tipo de propriedade">
             <SelectValue placeholder="Filtrar por tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -425,7 +516,15 @@ export default function Properties() {
             <SelectItem value="Grande">Grande</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={emptyStock ? 'empty' : 'all'} onValueChange={value => setSearchParams(previous => { const next = new URLSearchParams(previous); if (value === 'empty') next.set('stock', 'empty'); else next.delete('stock'); return next; })}>
+          <SelectTrigger className="guild-input w-full sm:w-48" aria-label="Filtrar estoque"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="all">Todo o estoque</SelectItem><SelectItem value="empty">Estoque vazio</SelectItem></SelectContent>
+        </Select>
+        <Button variant="outline" onClick={clearFilters}>Limpar filtros</Button>
       </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        {filteredProperties.reduce((total, property) => total + visibleItems(property).length, 0)} itens / {filteredProperties.reduce((total, property) => total + visibleItems(property).reduce((units, item) => units + item.quantity, 0), 0)} unidades nos resultados
+      </p>
       
       {loading ? (
         <div className="flex justify-center items-center h-40">
@@ -440,6 +539,14 @@ export default function Properties() {
                 selectedProperty?.id === property.id ? 'border-guild-primary' : ''
               }`}
               onClick={() => handlePropertyClick(property)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handlePropertyClick(property);
+                }
+              }}
             >
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
@@ -456,9 +563,9 @@ export default function Properties() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-400 mb-2">Itens: {property.items?.length || 0}</p>
+                <p className="text-sm text-gray-400 mb-2">Itens: {property.items?.length || 0} / Unidades: {(property.items ?? []).reduce((total, item) => total + item.quantity, 0)}</p>
                 <div className="space-y-2">
-                  {property.items?.slice(0, 3).map((item, idx) => (
+                  {visibleItems(property).slice(0, 3).map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
                         {item.icon_url && (
@@ -476,9 +583,9 @@ export default function Properties() {
                       <span className="text-gray-400">x{item.quantity}</span>
                     </div>
                   ))}
-                  {property.items && property.items.length > 3 && (
+                  {visibleItems(property).length > 3 && (
                     <p className="text-xs text-guild-primary text-center mt-2">
-                      +{property.items.length - 3} mais itens
+                      +{visibleItems(property).length - 3} mais itens
                     </p>
                   )}
                 </div>
@@ -493,7 +600,7 @@ export default function Properties() {
           <Package className="h-12 w-12 text-gray-500 mx-auto mb-4" />
           <h3 className="text-xl font-medium text-gray-300 mb-1">Nenhuma propriedade encontrada</h3>
           <p className="text-gray-400">
-            Adicione uma nova propriedade usando o botão acima
+            {properties.length ? 'Tente outra busca ou limpe os filtros.' : canEdit ? 'Adicione uma nova propriedade usando o botão acima.' : 'Nenhuma propriedade cadastrada.'}
           </p>
         </div>
       )}
@@ -511,18 +618,13 @@ export default function Properties() {
                   <span className="ml-1">{selectedProperty.type}</span>
                 </CardDescription>
               </div>
-              <div className="flex space-x-2">
-                <Button variant="outline" className="guild-button-ghost">
-                  Editar
-                </Button>
-              </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Itens no Baú</h3>
-                <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
+                <h3 className="text-lg font-medium">Itens no Baú ({selectedProperty.items.length} itens / {selectedProperty.items.reduce((total, item) => total + item.quantity, 0)} unidades)</h3>
+                {canEdit && <Dialog open={isAddItemDialogOpen} onOpenChange={open => { if (!saving && !iconUploading) { setIsAddItemDialogOpen(open); setNewItem({ name: '', quantity: 1 }); } }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="guild-button-ghost">
                       <Plus className="h-4 w-4 mr-1" /> Adicionar Item
@@ -548,9 +650,10 @@ export default function Properties() {
                           type="number" 
                           placeholder="Quantidade" 
                           className="guild-input" 
-                          min="1"
-                          value={newItem.quantity}
-                          onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                          min="0"
+                          step="1"
+                          value={Number.isNaN(newItem.quantity) ? '' : newItem.quantity}
+                          onChange={(e) => setNewItem({...newItem, quantity: e.target.valueAsNumber})}
                         />
                       </div>
                       <div className="space-y-2">
@@ -600,13 +703,14 @@ export default function Properties() {
                       <Button 
                         variant="outline" 
                         onClick={() => setIsAddItemDialogOpen(false)}
+                        disabled={saving || iconUploading}
                         className="guild-button-ghost"
                       >
                         Cancelar
                       </Button>
                       <Button 
                         onClick={handleAddItemToProperty}
-                        disabled={!newItem.name || iconUploading}
+                        disabled={!newItem.name.trim() || !validQuantity(newItem.quantity) || iconUploading || saving}
                       >
                         {iconUploading ? (
                           <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando...</>
@@ -616,7 +720,7 @@ export default function Properties() {
                       </Button>
                     </DialogFooter>
                   </DialogContent>
-                </Dialog>
+                </Dialog>}
               </div>
               
               <div className="bg-guild-dark/50 rounded-lg overflow-hidden">
@@ -625,18 +729,18 @@ export default function Properties() {
                     <tr className="border-b border-guild-primary/20">
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Item</th>
                       <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Quantidade</th>
-                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Ações</th>
+                      {canEdit && <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Ações</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedProperty.items && selectedProperty.items.length === 0 ? (
+                    {visibleItems(selectedProperty).length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                          Nenhum item encontrado nesta propriedade.
+                        <td colSpan={canEdit ? 3 : 2} className="px-4 py-8 text-center text-gray-400">
+                          Nenhum item encontrado nesta propriedade com os filtros atuais.
                         </td>
                       </tr>
                     ) : (
-                      selectedProperty.items && selectedProperty.items.map((item) => (
+                      visibleItems(selectedProperty).map((item) => (
                         <tr 
                           key={item.id}
                           className="border-b border-guild-primary/10 last:border-none hover:bg-guild-primary/5"
@@ -657,19 +761,20 @@ export default function Properties() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                          <td className="px-4 py-3 text-sm text-right">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                              Editar
+                          {canEdit && <td className="px-4 py-3 text-sm text-right">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={saving || !item.id} onClick={() => { setMovementItem(item); setMovementType('in'); setMovementQuantity('1'); setMovementError(''); }}>
+                              Movimentar
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               className="h-7 px-2 text-xs text-red-500"
-                              onClick={() => item.id && handleDeleteItem(item.id)}
+                              disabled={saving || !item.id}
+                              onClick={() => setDeleteItem(item)}
                             >
                               Remover
                             </Button>
-                          </td>
+                          </td>}
                         </tr>
                       ))
                     )}
@@ -680,6 +785,33 @@ export default function Properties() {
           </CardContent>
         </Card>
       )}
+      {canEdit && <Dialog open={!!movementItem} onOpenChange={open => { if (!open && !saving) setMovementItem(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Movimento de estoque</DialogTitle></DialogHeader>
+          <p>{movementItem?.name} — Estoque: {selectedProperty?.items.find(item => item.id === movementItem?.id)?.quantity ?? 0}</p>
+          <Select value={movementType} onValueChange={setMovementType} disabled={saving}>
+            <SelectTrigger aria-label="Tipo de movimento"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="in">Entrada</SelectItem><SelectItem value="out">Saída</SelectItem></SelectContent>
+          </Select>
+          <label htmlFor="movement-quantity">Quantidade</label>
+          <Input id="movement-quantity" type="number" min="1" max="2147483647" step="1" value={movementQuantity} onChange={event => setMovementQuantity(event.target.value)} disabled={saving} aria-invalid={!!movementError} aria-describedby={movementError ? 'movement-error' : undefined} />
+          {movementError && <p id="movement-error" role="alert" className="text-sm text-red-500">{movementError}</p>}
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => setMovementItem(null)}>Cancelar</Button>
+            <Button disabled={saving} onClick={handleMovement}>{saving ? 'Salvando...' : 'Confirmar movimento'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>}
+      {canEdit && <Dialog open={!!deleteItem} onOpenChange={open => { if (!open && !saving) setDeleteItem(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir item?</DialogTitle></DialogHeader>
+          <p>Excluir {deleteItem?.name} e suas {deleteItem?.quantity} unidades? Esta ação não pode ser desfeita.</p>
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => setDeleteItem(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={saving} onClick={() => deleteItem?.id && handleDeleteItem(deleteItem.id)}>{saving ? 'Excluindo...' : 'Excluir item'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>}
     </div>
   );
 }

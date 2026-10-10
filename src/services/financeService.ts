@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import type { Database } from "@/integrations/supabase/types";
+import { calendarDate, isPositiveAmount, MONEY_LIMIT_MESSAGE } from "@/utils/financeContent";
 
 export type FinanceData = {
   type: 'deposit' | 'withdrawal';
@@ -46,7 +47,7 @@ const checkIsAdmin = async (): Promise<boolean> => {
     if (error || !profile) return false;
     
     // Admin se for super admin (state_id "00") ou tiver role "admin"
-    return profile.state_id === '00' || profile.role === 'admin';
+    return profile.role === 'superadmin' || profile.role === 'admin';
   } catch (error) {
     console.error('Erro ao verificar status de admin:', error);
     return false;
@@ -55,6 +56,7 @@ const checkIsAdmin = async (): Promise<boolean> => {
 
 export const addFinanceRecord = async (data: FinanceData) => {
   try {
+    if (!isPositiveAmount(data.amount)) throw new Error(MONEY_LIMIT_MESSAGE);
     // Para retiradas, verificar se o usuário é admin
     if (data.type === 'withdrawal') {
       const isAdmin = await checkIsAdmin();
@@ -187,6 +189,7 @@ export const fetchPaymentSchedule = async () => {
 
 export const addPaymentSchedule = async (data: PaymentScheduleData) => {
   try {
+    if (!isPositiveAmount(data.amount)) throw new Error(MONEY_LIMIT_MESSAGE);
     const { error } = await supabase
       .from('payment_schedule')
       .insert({
@@ -241,6 +244,7 @@ export const deletePaymentSchedule = async (id: string) => {
 
 export const updatePaymentSchedule = async (id: string, data: PaymentScheduleData) => {
   try {
+    if (!isPositiveAmount(data.amount)) throw new Error(MONEY_LIMIT_MESSAGE);
     const { error } = await supabase
       .from('payment_schedule')
       .update(data)
@@ -290,7 +294,7 @@ export const fetchMonthlyStats = async () => {
     // Aggregate the finance data by month
     if (finances) {
       finances.forEach(finance => {
-        const date = new Date(finance.date as string);
+        const date = calendarDate(finance.date as string);
         const monthIndex = date.getMonth();
         
         if (finance.type === 'deposit') {

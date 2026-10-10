@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guildvault_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-guildvault}
+      POSTGRES_USER: ${POSTGRES_USER:-guildvault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?configure POSTGRES_PASSWORD no .env}
+    volumes:
+      - guildvault_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-guildvault} -d ${POSTGRES_DB:-guildvault}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    container_name: guildvault_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-guildvault}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-guildvault}
+      JWT_SECRET: ${JWT_SECRET:?configure JWT_SECRET no .env}
+      ADMIN_STATE_ID: ${ADMIN_STATE_ID:-00}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?configure ADMIN_PASSWORD no .env}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - guildvault_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  frontend:
+    build: .
+    container_name: guildvault_frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8082}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  guildvault_pgdata:
+  guildvault_uploads:

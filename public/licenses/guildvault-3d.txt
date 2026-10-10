@@ -1,0 +1,77 @@
+GuildVault interactive garage
+
+Garage architecture and procedural concrete textures were created for GuildVault in Blender.
+The scene is inspired by the user-supplied reference video; it is not a reconstruction, an official GTA asset, or a Rockstar Games product.
+
+Car Concept: model and textures by Eric Chadwick, 2024, owned by Darmstadt Graphics Group GmbH.
+Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
+License: Creative Commons Attribution 4.0 International (CC-BY-4.0).
+https://creativecommons.org/licenses/by/4.0/
+Full text: /licenses/carconcept-cc-by-4.0.txt
+Changes: geometry decimation, texture downscaling, graphite paint, glass/headlight tuning, placement and Blender re-export.
+Khronos and 3D Commerce logos remain subject to their separate trademark notice: /licenses/carconcept-trademarks.txt. No endorsement is implied.
+
+Orla Vault: original procedural coastal district, geometry, signs and generated asphalt created for GuildVault. No Rockstar assets or map data are included.
+
+Audi R8 2008 model by ahmetsalih.
+Source: https://free3d.com/3d-model/audi-r8-14024.html
+Original archive: gw4c6lw7or28-AudiR8.rar, provided by the user.
+Source page labels Personal Use License; author publicly replied yes to use in a game in the page comments. User confirmed permission for this project.
+Changes: web export, replacement PBR materials, normalized scale, split wheels with steering/spin pivots.
+
+Kakkanad browser city by VIVEK1394.
+Source: https://github.com/VIVEK1394/vicecity-kakkanad
+Revision: b96468e449ddca8116d7b6a78124d2bccffc1f01
+License: MIT as declared in upstream README. Original procedural map, traffic, vehicle dynamics and animation systems retained; adapted GuildVault shell, Audi loading, touch controls, pause and return bridge.
+Three.js r128 and example loaders: MIT, copyright three.js authors. License: /drive-city/libs/three-examples/LICENSE
+
+Urban traffic additions:
+Civilian man (HOMEN5) and woman (Woman in Action Outfit) by byzmod3d.
+Source: https://opengameart.org/content/3d-character-pack
+License: CC0 1.0 Universal https://creativecommons.org/publicdomain/zero/1.0/
+Source archive: bravos_game_br_part_3.zip.
+Changes by GuildVault: normalized scale, generated skinning/rig, original Idle/Walk/Run animations, material cleanup and web GLB export.
+Concept GT traffic: Car Concept by Eric Chadwick / Darmstadt Graphics Group GmbH, CC-BY-4.0, as credited above. Changes: decimation, 512px textures, simplified PBR paint and glass, wheel pivots, traffic paint variants.
+Audi traffic variants: same ahmetsalih source and permission noted above; varied paint and shared runtime geometry.
+SkeletonUtils: Three.js r128, MIT, license /drive-city/libs/three-examples/LICENSE.
+
+ACTIVE HUMAN CHARACTERS (replaces the earlier byzmod3d pedestrians):
+MakeHuman Community / MPFB2 and MakeHuman system assets (CC0). Original copyright holders: Data Collection AB, Joel Palmius, Jonas Hauquier; community contributors.
+Source: https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html
+License: https://static.makehumancommunity.org/about/license.html
+Clothed male/female, skin, eyes, eyebrows, eyelashes, hair and shoes; fitted and exported with anatomical game_engine 53-bone rig, original Idle/Walk/Run clips, optimized textures and corrected alpha/depth materials. Script: workbench/3d/build_human_assets.py.
+
+Audi V8 Acceleration Sound — FFKoenigsegg20012017 (Freesound), distributed by freesound_community / Pixabay.
+File supplied by user: freesound_community-audi-v8-acceleration-sound-6067.mp3; original preserved.
+Source: https://pixabay.com/sound-effects/city-audi-v8-acceleration-sound-6067/
+Original recording (CC0): https://freesound.org/people/FFKoenigsegg20012017/sounds/339703/
+Pixabay distribution license: https://pixabay.com/service/license-summary/
+Playback: one recording per accelerator press, gain fade on release/exit/pause, shared master volume; no per-frame restart. Synthesized idle remains underneath and resumes after the recording ends.
+
+POLICE FLEET — models supplied by Angelo (Downloads/Police car)
+Author credits supplied for this collection:
+Code-shadow-man: https://www.cgtrader.com/designers/code-shadow-man
+Karen-designer1994: https://www.cgtrader.com/designers/karen-designer1994
+Bskdisplay: https://www.cgtrader.com/designers/bskdisplay
+Holedonutdriveout: https://www.cgtrader.com/designers/holedonutdriveout
+Models: Ford Crown Victoria Police Interceptor; Peugeot 5008 Police National; Police Car 8; GTA 5 Police Car / LSPD Cruiser.
+Verified listing: Peugeot 5008 — bskdisplay, CGTrader Royalty Free License (no AI).
+https://www.cgtrader.com/free-3d-models/vehicle/military-vehicle/peugeot-5008-french-national-police-car
+Verified listing: GTA 5 Ford Crown Victoria Police Car — holedonutdriveout, CGTrader Royalty Free License (no AI).
+https://www.cgtrader.com/free-3d-models/car/car/gta-5-ford-crown-victoria-police-car
+GTA V names/designs remain the property of their respective holders; no affiliation is implied.
+GuildVault adaptations: portable PBR, recovered supplied textures, polygon/texture reduction, normalized dimensions, independent wheel pivots and runtime emergency lights. Original downloaded files preserved. Assets are used as part of the game, not offered as a separate asset download pack.
+
+Car Engine Starting — Grasopt (Freesound), distributed by freesound_community / Pixabay.
+Source: https://pixabay.com/sound-effects/city-car-engine-starting-43705/
+License: Pixabay Content License https://pixabay.com/service/license-summary/
+User-supplied file: freesound_community-car-engine-starting-43705.mp3; original preserved.
+Used once on vehicle entry; fade/cancel on exit or pause; shares master volume and mute. Acceleration recording waits for ignition playback to finish. No repeating ignition during driving.
+
+RECORDED POLICE SIRENS
+Police Sirens — Kave_msri / Pixabay.
+Source: https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-police-sirens-316719/
+License: Pixabay Content License https://pixabay.com/service/license-summary/
+User-supplied: kave_msri-police-sirens-316719.mp3 (backup recording).
+Additional user-supplied recordings: policia perto.mp3 and Policia longe.mp3; original author/source not included in the supplied filenames.
+Original files preserved. Runtime loudness matching, softened loop edges, continuous distance crossfade, directional pan, pause/mute and chase end fade. Replaces synthesized pursuit siren.

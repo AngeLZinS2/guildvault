@@ -6,7 +6,7 @@ export const useAdminCheck = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; role: string; state_id: string } | null>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -24,7 +24,7 @@ export const useAdminCheck = () => {
           if (!error && profile) {
             setCurrentUser(profile);
             // Super admin é somente o state_id "00"
-            const superAdmin = profile.state_id === '00';
+            const superAdmin = profile.role === 'superadmin';
             setIsSuperAdmin(superAdmin);
             // Admin regular inclui o super admin e usuários com role "admin"
             setIsAdmin(superAdmin || profile.role === 'admin');
@@ -44,7 +44,7 @@ export const useAdminCheck = () => {
       checkAdminStatus();
     });
 
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   return { isAdmin, isSuperAdmin, loading, currentUser };

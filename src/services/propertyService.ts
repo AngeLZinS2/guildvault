@@ -32,24 +32,16 @@ export const uploadItemIcon = async (file: File): Promise<string | null> => {
     const { data, error } = await supabase
       .storage
       .from('item-icons')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+      .upload(filePath, file);
 
     if (error) {
       throw error;
     }
 
-    // Get public URL for the uploaded file
-    const { data: urlData } = supabase
-      .storage
-      .from('item-icons')
-      .getPublicUrl(filePath);
-
-    return urlData.publicUrl;
-  } catch (error: any) {
-    console.error("Erro ao fazer upload do ícone:", error.message);
+    if (!data?.path) throw new Error('Upload não retornou uma URL');
+    return data.path;
+  } catch (error: unknown) {
+    console.error("Erro ao fazer upload do ícone:", error);
     return null;
   }
 };
@@ -65,8 +57,8 @@ export const fetchProperties = async () => {
     }
 
     return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao buscar propriedades:", error.message);
+  } catch (error: unknown) {
+    console.error("Erro ao buscar propriedades:", error);
     return { success: false, error };
   }
 };
@@ -89,14 +81,17 @@ export const addProperty = async (property: Omit<Property, 'id' | 'items'>) => {
     }
 
     return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao adicionar propriedade:", error.message);
+  } catch (error: unknown) {
+    console.error("Erro ao adicionar propriedade:", error);
     return { success: false, error };
   }
 };
 
 export const addItemToProperty = async (propertyId: string, item: Omit<Item, 'id' | 'property_id'>) => {
   try {
+    if (!Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 2147483647) {
+      throw new Error('Quantidade deve ser um inteiro não negativo');
+    }
     const { data, error } = await supabase
       .from('items')
       .insert({
@@ -113,14 +108,17 @@ export const addItemToProperty = async (propertyId: string, item: Omit<Item, 'id
     }
 
     return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao adicionar item:", error.message);
+  } catch (error: unknown) {
+    console.error("Erro ao adicionar item:", error);
     return { success: false, error };
   }
 };
 
 export const addPropertyWithItems = async (property: Omit<Property, 'id'>, items: Omit<Item, 'id' | 'property_id'>[]) => {
   try {
+    if (items.some(item => !Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 2147483647)) {
+      throw new Error('Quantidade deve ser um inteiro não negativo');
+    }
     // First add the property
     const propertyResult = await addProperty(property);
     
@@ -133,7 +131,8 @@ export const addPropertyWithItems = async (property: Omit<Property, 'id'>, items
     // Then add each item
     if (items.length > 0) {
       for (const item of items) {
-        await addItemToProperty(propertyId, item);
+        const result = await addItemToProperty(propertyId, item);
+        if (!result.success) throw new Error('Propriedade criada, mas houve falha ao adicionar itens. Confira o inventário antes de tentar novamente.');
       }
     }
     
@@ -143,10 +142,10 @@ export const addPropertyWithItems = async (property: Omit<Property, 'id'>, items
     });
     
     return { success: true, data: propertyResult.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     toast({
       title: "Erro ao adicionar propriedade",
-      description: error.message,
+      description: error instanceof Error ? error.message : 'Não foi possível adicionar a propriedade.',
       variant: "destructive"
     });
     
@@ -156,6 +155,9 @@ export const addPropertyWithItems = async (property: Omit<Property, 'id'>, items
 
 export const updatePropertyItem = async (itemId: string, updates: Partial<Item>) => {
   try {
+    if (updates.quantity !== undefined && (!Number.isSafeInteger(updates.quantity) || updates.quantity < 0 || updates.quantity > 2147483647)) {
+      throw new Error('Quantidade deve ser um inteiro não negativo');
+    }
     const { data, error } = await supabase
       .from('items')
       .update(updates)
@@ -168,8 +170,8 @@ export const updatePropertyItem = async (itemId: string, updates: Partial<Item>)
     }
 
     return { success: true, data };
-  } catch (error: any) {
-    console.error("Erro ao atualizar item:", error.message);
+  } catch (error: unknown) {
+    console.error("Erro ao atualizar item:", error);
     return { success: false, error };
   }
 };
@@ -186,8 +188,8 @@ export const deletePropertyItem = async (itemId: string) => {
     }
 
     return { success: true };
-  } catch (error: any) {
-    console.error("Erro ao deletar item:", error.message);
+  } catch (error: unknown) {
+    console.error("Erro ao deletar item:", error);
     return { success: false, error };
   }
 };

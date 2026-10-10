@@ -1,10 +1,9 @@
 
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { DollarSign } from "lucide-react";
 import { MemberData } from "@/types";
 
@@ -16,13 +15,12 @@ interface PaymentFormModalProps {
     amount: string;
     dueDate: string;
     members: string;
-    description: string;
-    sendNotifications: boolean;
   };
   members: MemberData[];
   handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   handleSelectChange: (formName: string, field: string, value: string) => void;
   handleSubmit: () => void;
+  busy?: boolean;
 }
 
 export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
@@ -33,14 +31,16 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   handleFormChange,
   handleSelectChange,
   handleSubmit,
+  busy = false,
 }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={open => !busy && setIsOpen(open)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Agendar Novo Pagamento</DialogTitle>
+          <DialogDescription>Organize contribuições. Agendamentos não geram lançamentos no caixa nem enviam notificações automaticamente.</DialogDescription>
         </DialogHeader>
-        <form className="space-y-4 py-4">
+        <form className="space-y-4 py-4" onSubmit={event => { event.preventDefault(); handleSubmit(); }}>
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium">
               Título
@@ -87,13 +87,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             <label htmlFor="members" className="text-sm font-medium">
               Membros Responsáveis
             </label>
-            <Select onValueChange={(value) => handleSelectChange('payment', 'members', value)}>
-              <SelectTrigger>
+            <Select value={paymentForm.members} onValueChange={(value) => handleSelectChange('payment', 'members', value)}>
+              <SelectTrigger id="members">
                 <SelectValue placeholder="Selecionar membros" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Todos os membros">Todos os membros</SelectItem>
-                <SelectItem value="Apenas líderes">Apenas líderes</SelectItem>
                 {members.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name}
@@ -103,35 +102,11 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">
-              Descrição
-            </label>
-            <Textarea 
-              id="description" 
-              placeholder="Detalhes sobre este pagamento" 
-              className="min-h-24"
-              value={paymentForm.description}
-              onChange={handleFormChange}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <input 
-              type="checkbox" 
-              id="sendNotifications" 
-              className="rounded text-primary focus:ring-primary"
-              checked={paymentForm.sendNotifications}
-              onChange={handleFormChange}
-            />
-            <label htmlFor="sendNotifications" className="text-sm">
-              Enviar notificações aos membros
-            </label>
-          </div>
         </form>
         <DialogFooter>
           <Button 
             variant="outline" 
+            disabled={busy}
             onClick={() => setIsOpen(false)}
           >
             Cancelar
@@ -139,7 +114,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           <Button 
             className="bg-primary hover:bg-primary/90" 
             onClick={handleSubmit}
-            disabled={!paymentForm.title || !paymentForm.amount || !paymentForm.dueDate || !paymentForm.members}
+            disabled={busy || !paymentForm.title || !paymentForm.amount || !paymentForm.dueDate || !paymentForm.members}
           >
             Agendar Pagamento
           </Button>

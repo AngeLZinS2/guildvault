@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+uploads
+__pycache__/
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +25,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+workbench/3d/*.blend1
+workbench/
+.agents/
+skills-lock.json
+backups/
+*.tar
+.env.*
+!.env.example
+*.db
+*.sqlite*
+public/models/guildvault-audi-r8.glb
+public/models/police/*.glb
+public/audio/*.mp3
+videos/**/.hyperframes/
+videos/**/.thumbnails/
+videos/**/snapshots*/

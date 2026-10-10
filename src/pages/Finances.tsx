@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { isPositiveAmount, isCalendarDate, matchesVerification, type VerificationFilter } from "@/utils/financeContent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { GameLoader } from "@/components/ui/game-loader";
 import { 
   addFinanceRecord, 
   fetchFinances, 
@@ -15,6 +19,10 @@ import { MemberData } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { filterTransactionsByDate } from "@/utils/dateFilters";
+import type { Transaction } from "@/utils/dateFilters";
+import type { MonthlyStatsData } from "@/services/financeService";
+
+type ScheduledPayment = { id: string; title: string; amount: number; due_date: string; members: string[] };
 
 // Import new componentized parts
 import { FinanceHeader } from "@/components/finance/FinanceHeader";
@@ -29,11 +37,14 @@ import { WithdrawalFormModal } from "@/components/finance/WithdrawalFormModal";
 import { PaymentFormModal } from "@/components/finance/PaymentFormModal";
 
 export default function Finances() {
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [paymentSchedule, setPaymentSchedule] = useState<any[]>([]);
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { isAdmin, currentUser } = useAdminCheck();
+  const [transactions, setTransactions] = useState<(Transaction & { member_id: string })[]>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<ScheduledPayment[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyStatsData[]>([]);
   const [members, setMembers] = useState<MemberData[]>([]);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(searchParams.get("status") || searchParams.get("member") ? "transactions" : "overview");
+  const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>(searchParams.get("status") === "pending" ? "pending" : "all");
   const [isAddDepositOpen, setIsAddDepositOpen] = useState(false);
   const [isAddWithdrawalOpen, setIsAddWithdrawalOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
@@ -46,8 +57,13 @@ export default function Finances() {
   });
   const [loading, setLoading] = useState(true);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const uploadVersion = useRef(0);
+  const [loadError, setLoadError] = useState(false);
 
   const [depositForm, setDepositForm] = useState({
     amount: "",
@@ -67,38 +83,46 @@ export default function Finances() {
     amount: "",
     dueDate: "",
     members: "",
-    description: "",
-    sendNotifications: false
   });
+
+  useEffect(() => {
+    if (searchParams.get("status") === "pending") {
+      setVerificationFilter("pending");
+      setActiveTab("transactions");
+    }
+    if (searchParams.get("member")) setActiveTab("transactions");
+  }, [searchParams]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
         // Load members
-        const { data: membersData } = await fetchMembers();
+        const { data: membersData, success: membersSuccess } = await fetchMembers();
         if (membersData) {
           setMembers(membersData);
         }
 
         // Load finances
-        const { data: financesData } = await fetchFinances();
+        const { data: financesData, success: financesSuccess } = await fetchFinances();
         if (financesData) {
           setTransactions(financesData);
         }
 
         // Load payment schedule
-        const { data: paymentScheduleData } = await fetchPaymentSchedule();
+        const { data: paymentScheduleData, success: scheduleSuccess } = await fetchPaymentSchedule();
         if (paymentScheduleData) {
           setPaymentSchedule(paymentScheduleData);
         }
 
         // Load monthly stats
-        const { data: monthlyStatsData } = await fetchMonthlyStats();
+        const { data: monthlyStatsData, success: statsSuccess } = await fetchMonthlyStats();
         if (monthlyStatsData) {
           setMonthlyData(monthlyStatsData);
         }
+        setLoadError(!membersSuccess || !financesSuccess || !scheduleSuccess || !statsSuccess);
       } catch (error) {
+        setLoadError(true);
         console.error("Error loading data:", error);
         toast({
           title: "Erro ao carregar dados",
@@ -114,82 +138,48 @@ export default function Finances() {
   }, []);
 
   const handleFileUpload = async (file: File | null) => {
+    const version = ++uploadVersion.current;
+    setUploadedFilePath(null);
+    setUploadError(false);
     if (!file) {
-      setSelectedFile(null);
-      setUploadedFilePath(null);
+      setUploading(false);
       return;
     }
-
-    setSelectedFile(file);
-
+    setUploading(true);
     try {
-      // Check if file is within size limit (10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "Arquivo muito grande",
-          description: "O tamanho máximo permitido é 10MB",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Create a storage bucket for finance proofs if it doesn't exist
-      // Note: This would normally be done through SQL migrations
-      // For this example, we'll handle it in the frontend
-      
-      // Generate a unique filename to prevent collisions
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `finance_proofs/${fileName}`;
-      
-      // Upload the file to Supabase storage
-      const { error: uploadError, data } = await supabase.storage
+      if (file.size > 10 * 1024 * 1024) throw new Error("O tamanho máximo permitido é 10MB");
+      if (!/\.(png|jpe?g|webp|pdf)$/i.test(file.name)) throw new Error("Selecione uma imagem PNG, JPG, WebP ou um PDF");
+      const { error, data } = await supabase.storage
         .from('finance_proofs')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (uploadError) {
-        console.error("Error uploading file:", uploadError);
-        
-        // Handle specific error for bucket not found
-        if (uploadError.message?.includes('bucket not found')) {
-          toast({
-            title: "Erro no upload",
-            description: "Bucket de armazenamento não encontrado. Por favor, configure o armazenamento no Supabase.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Erro no upload",
-            description: uploadError.message,
-            variant: "destructive"
-          });
-        }
-        
-        return;
-      }
-      
-      // Get public URL for the file
-      const { data: { publicUrl } } = supabase.storage
-        .from('finance_proofs')
-        .getPublicUrl(filePath);
-        
-      setUploadedFilePath(publicUrl);
+        .upload(file.name, file);
+      if (error || !data) throw error || new Error("Não foi possível enviar o comprovante");
+      if (version !== uploadVersion.current) return;
+      setUploadedFilePath(data.path);
       
       toast({
         title: "Comprovante enviado",
         description: "O comprovante foi anexado com sucesso",
       });
     } catch (error) {
-      console.error("Error handling file upload:", error);
+      if (version !== uploadVersion.current) return;
+      setUploadError(true);
       toast({
         title: "Erro no upload",
-        description: "Ocorreu um erro ao processar o upload",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar o upload",
         variant: "destructive"
       });
+    } finally {
+      if (version === uploadVersion.current) setUploading(false);
     }
+  };
+
+  const openTransaction = (type: "deposit" | "withdrawal") => {
+    uploadVersion.current++;
+    setUploadedFilePath(null);
+    setUploadError(false);
+    setUploading(false);
+    if (type === "deposit") setIsAddDepositOpen(true);
+    else setIsAddWithdrawalOpen(true);
   };
 
   const handleDepositFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -236,11 +226,31 @@ export default function Finances() {
     }
   };
 
+  const refreshSchedule = async () => {
+    const result = await fetchPaymentSchedule();
+    if (result.success && result.data) setPaymentSchedule(result.data);
+    else toast({ title: "Não foi possível atualizar a agenda", variant: "destructive" });
+  };
+
+  const runSave = async (operation: () => Promise<void>) => {
+    if (saveLock.current || uploading) return;
+    saveLock.current = true;
+    setSaving(true);
+    try {
+      await operation();
+    } catch (error) {
+      toast({ title: "Não foi possível concluir", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
+  };
+
   const handleDepositSubmit = async () => {
-    if (!depositForm.amount || !depositForm.member) {
+    if (!isPositiveAmount(depositForm.amount) || !depositForm.member || uploadError) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Informe um valor entre $0,01 e $1.000.000.000, escolha um membro e corrija qualquer erro no comprovante.",
         variant: "destructive"
       });
       return;
@@ -254,6 +264,7 @@ export default function Finances() {
       proof_url: uploadedFilePath
     };
 
+    await runSave(async () => {
     const { success } = await addFinanceRecord(newTransaction);
     if (success) {
       await refreshData();
@@ -264,17 +275,18 @@ export default function Finances() {
         description: ""
       });
       
-      setSelectedFile(null);
       setUploadedFilePath(null);
       setIsAddDepositOpen(false);
     }
+    });
   };
 
   const handleWithdrawalSubmit = async () => {
-    if (!withdrawalForm.amount || !withdrawalForm.member) {
+    if (!isAdmin) return;
+    if (!isPositiveAmount(withdrawalForm.amount) || !withdrawalForm.member || uploadError) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Informe um valor entre $0,01 e $1.000.000.000, escolha um membro e corrija qualquer erro no comprovante.",
         variant: "destructive"
       });
       return;
@@ -288,6 +300,7 @@ export default function Finances() {
       proof_url: uploadedFilePath
     };
 
+    await runSave(async () => {
     const { success } = await addFinanceRecord(newTransaction);
     if (success) {
       await refreshData();
@@ -299,29 +312,31 @@ export default function Finances() {
         description: ""
       });
       
-      setSelectedFile(null);
       setUploadedFilePath(null);
       setIsAddWithdrawalOpen(false);
     }
+    });
   };
 
   const handlePaymentSubmit = async () => {
-    if (!paymentForm.title || !paymentForm.amount || !paymentForm.dueDate || !paymentForm.members) {
+    if (!isAdmin) return;
+    if (!paymentForm.title.trim() || !isPositiveAmount(paymentForm.amount) || !isCalendarDate(paymentForm.dueDate) || !paymentForm.members) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Informe título, valor maior que zero e até $1.000.000.000, data válida e responsáveis.",
         variant: "destructive"
       });
       return;
     }
 
     const newPayment = {
-      title: paymentForm.title,
+      title: paymentForm.title.trim(),
       amount: Number(paymentForm.amount),
       due_date: paymentForm.dueDate,
       members: [paymentForm.members]
     };
 
+    await runSave(async () => {
     const { success } = await addPaymentSchedule(newPayment);
     if (success) {
       const { data: paymentScheduleData } = await fetchPaymentSchedule();
@@ -334,28 +349,39 @@ export default function Finances() {
         amount: "",
         dueDate: "",
         members: "",
-        description: "",
-        sendNotifications: false
       });
       
       setIsAddPaymentOpen(false);
     }
+    });
   };
 
   const handleVerifyTransaction = async (id: string, data: VerificationData) => {
+    if (!isAdmin || !currentUser?.id) return false;
     const { success } = await updateFinanceVerification(id, data);
     if (success) {
       await refreshData();
     }
+    return success;
   };
 
   const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch = 
-      (transaction.member_name && transaction.member_name.toLowerCase().includes(searchTerm.toLowerCase())) || 
-      (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = !searchTerm.trim() ||
+      (transaction.member_name && transaction.member_name.toLowerCase().includes(searchTerm.trim().toLowerCase())) ||
+      (transaction.description && transaction.description.toLowerCase().includes(searchTerm.trim().toLowerCase()));
     const matchesType = filterType === "all" || transaction.type === filterType;
-    return matchesSearch && matchesType;
+    const matchesMember = !searchParams.get("member") || transaction.member_id === searchParams.get("member");
+    return matchesSearch && matchesType && matchesMember && matchesVerification(transaction.verified, verificationFilter);
   });
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setFilterType("all");
+    setDateFilter("all");
+    setCustomDateRange({ from: undefined, to: undefined });
+    setVerificationFilter("all");
+    setSearchParams({}, { replace: true });
+  };
 
   const dateFilteredTransactions = filterTransactionsByDate(filteredTransactions, dateFilter, customDateRange);
 
@@ -389,18 +415,19 @@ export default function Finances() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 pt-20 pb-10 flex flex-col items-center justify-center h-[80vh]">
-        <Loader2 className="h-12 w-12 animate-spin text-guild-primary mb-4" />
-        <h2 className="text-xl font-medium">Carregando dados financeiros...</h2>
+        <GameLoader label="Carregando dados financeiros..." />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 pb-10">
+    <div className="mx-auto max-w-[1400px] pb-10 motion-enter">
       <FinanceHeader 
-        onOpenDepositModal={() => setIsAddDepositOpen(true)} 
-        onOpenWithdrawalModal={() => setIsAddWithdrawalOpen(true)} 
+        onOpenDepositModal={() => openTransaction("deposit")}
+        onOpenWithdrawalModal={() => openTransaction("withdrawal")}
       />
+
+      {loadError && <p role="alert" className="mb-4 rounded-md border border-destructive/40 p-3 text-sm">Parte dos dados não foi carregada. Os números podem estar incompletos. <Button variant="link" onClick={() => window.location.reload()}>Tentar novamente</Button></p>}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full md:w-auto grid-cols-3 mb-6">
@@ -425,18 +452,21 @@ export default function Finances() {
             <RecentTransactions 
               transactions={transactions} 
               onSeeAllTransactions={() => setActiveTab("transactions")} 
-              onOpenDepositModal={() => setIsAddDepositOpen(true)}
+              onOpenDepositModal={() => openTransaction("deposit")}
             />
             
             <PaymentScheduleCard 
               paymentSchedule={paymentSchedule} 
-              onOpenPaymentModal={() => setIsAddPaymentOpen(true)} 
+              canManage={isAdmin}
+              members={members}
+              onOpenPaymentModal={() => isAdmin ? setIsAddPaymentOpen(true) : setActiveTab("schedule")}
             />
           </div>
         </TabsContent>
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-6">
+          {searchParams.get("member") && <p className="text-sm text-muted-foreground">Contribuições de {members.find(member => member.id === searchParams.get("member"))?.name ?? "membro selecionado"}. <Button variant="link" onClick={resetFilters}>Ver todos os membros</Button></p>}
           <TransactionTable
             transactions={transactions}
             filteredTransactions={dateFilteredTransactions}
@@ -449,7 +479,11 @@ export default function Finances() {
             onDateFilterChange={setDateFilter}
             onCustomDateRangeChange={setCustomDateRange}
             onVerifyTransaction={handleVerifyTransaction}
-            currentUserId="test-user-id" // In a real app, this would be the current user's ID
+            currentUserId={currentUser?.id}
+            canVerify={isAdmin}
+            verificationFilter={verificationFilter}
+            onVerificationFilterChange={setVerificationFilter}
+            onResetFilters={resetFilters}
           />
         </TabsContent>
 
@@ -457,8 +491,10 @@ export default function Finances() {
         <TabsContent value="schedule" className="space-y-6">
           <PaymentSchedulePage 
             paymentSchedule={paymentSchedule} 
-            isAddPaymentOpen={isAddPaymentOpen}
             setIsAddPaymentOpen={setIsAddPaymentOpen}
+            onChanged={refreshSchedule}
+            canManage={isAdmin}
+            members={members}
           />
         </TabsContent>
       </Tabs>
@@ -468,11 +504,13 @@ export default function Finances() {
         isOpen={isAddDepositOpen}
         setIsOpen={setIsAddDepositOpen}
         depositForm={depositForm}
-        members={members}
+        members={isAdmin ? members : members.filter(member => member.id === currentUser?.id)}
         handleFormChange={handleDepositFormChange}
         handleSelectChange={handleSelectChange}
         handleFileUpload={handleFileUpload}
         handleSubmit={handleDepositSubmit}
+        busy={saving || uploading}
+        uploadError={uploadError}
       />
       
       <WithdrawalFormModal 
@@ -484,6 +522,8 @@ export default function Finances() {
         handleSelectChange={handleSelectChange}
         handleFileUpload={handleFileUpload}
         handleSubmit={handleWithdrawalSubmit}
+        busy={saving || uploading}
+        uploadError={uploadError}
       />
       
       <PaymentFormModal 
@@ -494,6 +534,7 @@ export default function Finances() {
         handleFormChange={handlePaymentFormChange}
         handleSelectChange={handleSelectChange}
         handleSubmit={handlePaymentSubmit}
+        busy={saving}
       />
     </div>
   );

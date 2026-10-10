@@ -1,0 +1,25 @@
+/* GuildVault integration: original Kakkanad simulation retained. */
+#start-modal, #debug-error-box { display: none !important; }
+#hud { top: 70px; height: calc(100% - 70px); }
+@media (max-width: 700px) {
+  #hud { top: 100px; height: calc(100% - 210px); }
+  .controls-hint { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) { .screen-fx { display:none!important } }
+/* Compact GuildVault HUD, leaving the street and car visible. */
+.wanted-container,.cash-box,.vital-bars,.radio-banner,.controls-hint,#onfoot-hud{display:none!important}
+.hud-top-right{top:12px!important;right:16px!important;width:auto!important}
+.location-banner{font-family:system-ui,sans-serif!important;background:#10232ccb!important;padding:8px 12px!important;border-radius:8px!important;box-shadow:none!important;text-align:right!important}
+.location-name{font-size:10px!important;max-width:300px;letter-spacing:.04em!important}
+.time-display{font-size:13px!important;color:#edf5e9!important;text-shadow:none!important}
+.vehicle-hud{right:20px!important;bottom:28px!important;width:190px!important;padding:12px!important;border:1px solid #ffffff35!important;background:#10232cde!important;box-shadow:none!important}
+.vehicle-name{font-family:system-ui,sans-serif!important;font-size:12px!important;color:#ecf7e8!important;letter-spacing:.05em!important}
+.speed-val{font-size:34px!important;text-shadow:none!important}
+.radar-container{width:150px!important;height:150px!important;bottom:25px!important;left:20px!important}
+@media(max-width:700px){
+ .hud-top-right{top:8px!important;right:10px!important}.location-banner{max-width:200px!important}.location-name{font-size:8px!important}.time-display{font-size:11px!important}
+ .radar-container{width:100px!important;height:100px!important;bottom:6px!important;left:10px!important}
+ .vehicle-hud{width:110px!important;bottom:8px!important;right:10px!important;padding:8px!important}.vehicle-controls{display:none!important}.speed-val{font-size:26px!important}
+}
+.radar-cluster{left:20px!important;bottom:25px!important}.radar-outer-ring{width:150px!important;height:150px!important;border-color:#9bbbaa!important;box-shadow:none!important}#radar-canvas{width:100%!important;height:100%!important}.vehicle-hints{font-size:9px!important;flex-wrap:wrap;max-width:160px}
+@media(max-width:700px){.radar-cluster{left:10px!important;bottom:6px!important}.radar-outer-ring{width:95px!important;height:95px!important}.vehicle-hints{display:none!important}}

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DollarSign, Upload, AlertCircle } from "lucide-react";
 import { MemberData } from "@/types";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { GameLoader } from "@/components/ui/game-loader";
 
 interface WithdrawalFormModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ interface WithdrawalFormModalProps {
   handleSelectChange: (formName: string, field: string, value: string) => void;
   handleFileUpload: (file: File | null) => void;
   handleSubmit: () => void;
+  busy?: boolean;
+  uploadError?: boolean;
 }
 
 export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
@@ -33,10 +36,13 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
   handleSelectChange,
   handleFileUpload,
   handleSubmit,
+  busy = false,
+  uploadError = false,
 }) => {
   const { isAdmin, loading } = useAdminCheck();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = React.useState<string | null>(null);
+  React.useEffect(() => { if (!isOpen) setSelectedFileName(null); }, [isOpen]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -70,7 +76,7 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={open => !busy && setIsOpen(open)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar Nova Retirada</DialogTitle>
@@ -78,8 +84,7 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
         
         {!isAdmin && loading && (
           <div className="p-4 text-center">
-            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-            <p>Verificando permissões...</p>
+            <GameLoader label="Verificando permissões..." inline />
           </div>
         )}
 
@@ -92,7 +97,7 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
 
         {isAdmin && (
           <>
-            <form className="space-y-4 py-4">
+            <form className="space-y-4 py-4" onSubmit={event => { event.preventDefault(); handleSubmit(); }}>
               <div className="space-y-2">
                 <label htmlFor="amount" className="text-sm font-medium">
                   Valor
@@ -115,8 +120,8 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
                 <label htmlFor="reason" className="text-sm font-medium">
                   Motivo
                 </label>
-                <Select onValueChange={(value) => handleSelectChange('withdrawal', 'reason', value)}>
-                  <SelectTrigger>
+                <Select value={withdrawalForm.reason} onValueChange={(value) => handleSelectChange('withdrawal', 'reason', value)}>
+                  <SelectTrigger id="reason">
                     <SelectValue placeholder="Selecionar motivo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -133,8 +138,8 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
                 <label htmlFor="member" className="text-sm font-medium">
                   Membro Responsável
                 </label>
-                <Select onValueChange={(value) => handleSelectChange('withdrawal', 'member', value)}>
-                  <SelectTrigger>
+                <Select value={withdrawalForm.member} onValueChange={(value) => handleSelectChange('withdrawal', 'member', value)}>
+                  <SelectTrigger id="member">
                     <SelectValue placeholder="Selecionar membro" />
                   </SelectTrigger>
                   <SelectContent>
@@ -199,10 +204,14 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
                   />
                 </div>
               </div>
+              {busy && <p role="status" className="text-sm">Processando envio…</p>}
+              {uploadError && <p role="alert" className="text-sm text-destructive">Comprovante não enviado. Escolha outro arquivo ou remova o anexo.</p>}
+              {selectedFileName && <Button type="button" variant="ghost" disabled={busy} onClick={() => { setSelectedFileName(null); if (fileInputRef.current) fileInputRef.current.value = ""; handleFileUpload(null); }}>Remover anexo</Button>}
             </form>
             <DialogFooter>
               <Button 
                 variant="outline" 
+                disabled={busy}
                 onClick={() => setIsOpen(false)}
               >
                 Cancelar
@@ -210,7 +219,7 @@ export const WithdrawalFormModal: React.FC<WithdrawalFormModalProps> = ({
               <Button 
                 className="bg-red-600 hover:bg-red-700" 
                 onClick={handleSubmit}
-                disabled={!withdrawalForm.amount || !withdrawalForm.member}
+                disabled={busy || uploadError || !withdrawalForm.amount || !withdrawalForm.member}
               >
                 Registrar Retirada
               </Button>

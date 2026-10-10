@@ -1,277 +1,125 @@
-
-import React, { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { updatePaymentSchedule, deletePaymentSchedule } from "@/services/financeService";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
+import { calendarDate, isCalendarDate, isPositiveAmount, localDate } from "@/utils/financeContent";
 
 interface Payment {
   id: string;
   title: string;
   amount: number;
   due_date: string;
-  members: string[];
+  members: string[] | null;
 }
 
 interface PaymentSchedulePageProps {
   paymentSchedule: Payment[];
-  isAddPaymentOpen: boolean;
   setIsAddPaymentOpen: (isOpen: boolean) => void;
+  onChanged: () => Promise<void>;
+  canManage: boolean;
+  members: { id: string; name: string }[];
 }
 
-export const PaymentSchedulePage: React.FC<PaymentSchedulePageProps> = ({
-  paymentSchedule,
-  isAddPaymentOpen,
-  setIsAddPaymentOpen,
-}) => {
-  const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+export function PaymentSchedulePage({ paymentSchedule, setIsAddPaymentOpen, onChanged, canManage, members }: PaymentSchedulePageProps) {
+  const [filter, setFilter] = useState("all");
   const [currentPayment, setCurrentPayment] = useState<Payment | null>(null);
-  const [editForm, setEditForm] = useState({
-    title: "",
-    amount: "",
-    dueDate: "",
-    members: "",
-  });
+  const [action, setAction] = useState<"edit" | "delete" | "reminder" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const [editForm, setEditForm] = useState({ title: "", amount: "", dueDate: "", members: "" });
+  const [reminder, setReminder] = useState("");
+  const today = localDate();
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const memberNames = (payment: Payment) => (payment.members ?? []).map(member => members.find(profile => profile.id === member)?.name ?? member).join(", ") || "Não informado";
+  const filteredPayments = paymentSchedule.filter(payment => filter === "all" || (filter === "overdue" ? payment.due_date.slice(0, 10) < today : payment.due_date.slice(0, 10) >= today && payment.due_date.slice(0, 10) <= localDate(nextWeek)));
 
-  const handleEditPayment = (payment: Payment) => {
+  const openAction = (payment: Payment, nextAction: typeof action) => {
     setCurrentPayment(payment);
-    setEditForm({
-      title: payment.title,
-      amount: payment.amount.toString(),
-      dueDate: payment.due_date.split('T')[0], // Format date for input
-      members: payment.members.join(", "),
-    });
-    setIsEditPaymentOpen(true);
+    setAction(nextAction);
+    setEditForm({ title: payment.title, amount: String(payment.amount), dueDate: payment.due_date.slice(0, 10), members: (payment.members ?? []).join(", ") });
+    setReminder(`GuildVault — ${payment.title}\nContribuição: $${payment.amount.toLocaleString("pt-BR")} por membro\nPrazo: ${calendarDate(payment.due_date).toLocaleDateString("pt-BR")}\nResponsáveis: ${memberNames(payment)}\nConfira a agenda e registre seu depósito no sistema.`);
   };
 
-  const handleDeletePayment = (payment: Payment) => {
-    setCurrentPayment(payment);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!currentPayment) return;
-    
-    const { success } = await deletePaymentSchedule(currentPayment.id);
-    
-    if (success) {
-      toast({
-        title: "Pagamento removido",
-        description: "O pagamento foi removido com sucesso."
-      });
-      setIsDeleteConfirmOpen(false);
-      // The parent component should refresh the payment schedule list
-    }
-  };
-
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({
-      ...editForm,
-      [e.target.id]: e.target.value,
-    });
-  };
-
-  const handleSubmitEdit = async () => {
-    if (!currentPayment) return;
-    
-    if (!editForm.title || !editForm.amount || !editForm.dueDate) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive"
-      });
+  const save = async () => {
+    if (!currentPayment || !canManage || saveLock.current) return;
+    if (action === "edit" && (!editForm.title.trim() || !isPositiveAmount(editForm.amount) || !isCalendarDate(editForm.dueDate))) {
+      toast({ title: "Dados inválidos", description: "Informe título, valor positivo de até $1.000.000.000 e data válida.", variant: "destructive" });
       return;
     }
+    saveLock.current = true;
+    setSaving(true);
+    try {
+      const result = action === "delete"
+        ? await deletePaymentSchedule(currentPayment.id)
+        : await updatePaymentSchedule(currentPayment.id, { title: editForm.title.trim(), amount: Number(editForm.amount), due_date: editForm.dueDate, members: editForm.members.split(",").map(member => member.trim()).filter(Boolean) });
+      if (result.success) {
+        setAction(null);
+        await onChanged();
+      }
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
+  };
 
-    const membersList = editForm.members
-      .split(",")
-      .map((member) => member.trim())
-      .filter((member) => member !== "");
-
-    const updatedPayment = {
-      title: editForm.title,
-      amount: Number(editForm.amount),
-      due_date: editForm.dueDate,
-      members: membersList.length > 0 ? membersList : currentPayment.members,
-    };
-
-    const { success } = await updatePaymentSchedule(currentPayment.id, updatedPayment);
-    
-    if (success) {
-      setIsEditPaymentOpen(false);
-      // The parent component should refresh the payment schedule list
+  const copyReminder = async () => {
+    try {
+      await navigator.clipboard.writeText(reminder);
+      toast({ title: "Lembrete copiado", description: "Compartilhe manualmente com sua equipe." });
+    } catch {
+      toast({ title: "Cópia indisponível neste navegador", description: "Selecione o texto do lembrete e copie manualmente. Em HTTP, a área de transferência pode estar bloqueada." });
     }
   };
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Cronograma de Pagamentos</CardTitle>
-            <CardDescription>Agenda de contribuições obrigatórias</CardDescription>
-          </div>
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsAddPaymentOpen(true)}>
-            <Calendar className="h-4 w-4 mr-2" /> Agendar Pagamento
-          </Button>
+      <CardHeader className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><CardTitle>Cronograma de Pagamentos</CardTitle><CardDescription>Agenda de contribuições. Prazos não indicam quitação: confira os lançamentos no caixa.</CardDescription></div>
+          {canManage && <Button onClick={() => setIsAddPaymentOpen(true)}>Agendar Pagamento</Button>}
+        </div>
+        <div className="flex flex-wrap gap-2" aria-label="Filtrar agenda">
+          {[{ value: "all", label: "Todos" }, { value: "overdue", label: "Prazo vencido" }, { value: "week", label: "Próximos 7 dias" }].map(option => <Button key={option.value} size="sm" variant={filter === option.value ? "default" : "outline"} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>{option.label}</Button>)}
         </div>
       </CardHeader>
-      <CardContent>
-        {paymentSchedule.length > 0 ? (
-          <div className="space-y-4">
-            {paymentSchedule.map((payment) => (
-              <Card key={payment.id} className="bg-secondary border-primary/10">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{payment.title}</CardTitle>
-                      <CardDescription>
-                        Vencimento: {new Date(payment.due_date).toLocaleDateString()}
-                      </CardDescription>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-primary">
-                        ${payment.amount.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        por membro
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-400">
-                      <span className="font-medium text-foreground">Membros:</span> {payment.members.join(", ")}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-yellow-500">
-                        <AlertCircle className="h-4 w-4 mr-1" /> Lembrar
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2"
-                        onClick={() => handleEditPayment(payment)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" /> Editar
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2 text-red-500"
-                        onClick={() => handleDeletePayment(payment)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" /> Excluir
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Calendar className="h-10 w-10 text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-300 mb-1">Nenhum pagamento agendado</h3>
-            <p className="text-gray-400 mb-4">
-              Crie seu primeiro agendamento para organizar suas finanças
-            </p>
-            <Button 
-              className="bg-primary hover:bg-primary/90" 
-              onClick={() => setIsAddPaymentOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" /> Agendar Pagamento
-            </Button>
-          </div>
-        )}
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground" aria-live="polite">{filteredPayments.length} agendamentos neste filtro</p>
+        {filteredPayments.map(payment => (
+          <article key={payment.id} className="rounded-lg border border-white/10 p-4">
+            <div className="flex flex-wrap justify-between gap-2">
+              <div><h3 className="text-lg font-medium">{payment.title}</h3><p className="text-sm text-muted-foreground">Prazo: {calendarDate(payment.due_date).toLocaleDateString("pt-BR")}</p></div>
+              <p>${payment.amount.toLocaleString("pt-BR")} <span className="text-xs text-muted-foreground">por membro</span></p>
+            </div>
+            <div className="my-3"><Badge variant="outline">{payment.due_date.slice(0, 10) < today ? "Prazo vencido" : payment.due_date.slice(0, 10) === today ? "Prazo hoje" : "Programado"}</Badge></div>
+            <p className="mb-3 break-words text-sm text-muted-foreground">Responsáveis: {memberNames(payment)}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => openAction(payment, "reminder")}>Gerar lembrete</Button>
+              {canManage && <><Button size="sm" variant="outline" onClick={() => openAction(payment, "edit")}>Editar</Button><Button size="sm" variant="destructive" onClick={() => openAction(payment, "delete")}>Excluir</Button></>}
+            </div>
+          </article>
+        ))}
+        {filteredPayments.length === 0 && <p className="py-8 text-center text-muted-foreground">{paymentSchedule.length ? "Nenhum agendamento neste filtro." : "Nenhum pagamento agendado. Organize sua primeira contribuição."}</p>}
       </CardContent>
-      
-      {/* Edit Payment Dialog */}
-      <Dialog open={isEditPaymentOpen} onOpenChange={setIsEditPaymentOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Editar Pagamento</DialogTitle>
-            <DialogDescription>
-              Altere os detalhes do pagamento agendado
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">Título</Label>
-              <Input
-                id="title"
-                value={editForm.title}
-                onChange={handleEditFormChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">Valor</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={editForm.amount}
-                onChange={handleEditFormChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dueDate" className="text-right">Vencimento</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={editForm.dueDate}
-                onChange={handleEditFormChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="members" className="text-right">Membros</Label>
-              <Input
-                id="members"
-                placeholder="Membros separados por vírgula"
-                value={editForm.members}
-                onChange={handleEditFormChange}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditPaymentOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmitEdit}>
-              Salvar alterações
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
+      <Dialog open={action !== null} onOpenChange={open => !open && !saving && setAction(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{action === "edit" ? "Editar Pagamento" : action === "delete" ? "Excluir agendamento" : "Lembrete para a equipe"}</DialogTitle><DialogDescription>{action === "delete" ? `Excluir “${currentPayment?.title}”? A ação não pode ser desfeita e não altera transações financeiras.` : action === "reminder" ? "Edite e compartilhe este texto manualmente. Nenhuma notificação é enviada automaticamente." : "Altere os dados e salve para atualizar a agenda."}</DialogDescription></DialogHeader>
+          {action === "edit" && <div className="space-y-3">
+            <Label htmlFor="schedule-title">Título</Label><Input id="schedule-title" maxLength={160} value={editForm.title} onChange={event => setEditForm({ ...editForm, title: event.target.value })} />
+            <Label htmlFor="schedule-amount">Valor por membro</Label><Input id="schedule-amount" type="number" min="0.01" step="0.01" value={editForm.amount} onChange={event => setEditForm({ ...editForm, amount: event.target.value })} />
+            <Label htmlFor="schedule-date">Vencimento</Label><Input id="schedule-date" type="date" value={editForm.dueDate} onChange={event => setEditForm({ ...editForm, dueDate: event.target.value })} />
+            <Label htmlFor="schedule-members">Responsáveis (nomes ou IDs separados por vírgula)</Label><Input id="schedule-members" value={editForm.members} onChange={event => setEditForm({ ...editForm, members: event.target.value })} />
+          </div>}
+          {action === "reminder" && <Textarea aria-label="Texto do lembrete" rows={7} value={reminder} onChange={event => setReminder(event.target.value)} onFocus={event => event.target.select()} />}
+          <DialogFooter><Button variant="outline" disabled={saving} onClick={() => setAction(null)}>Cancelar</Button>{action === "reminder" ? <Button onClick={copyReminder}>Copiar lembrete</Button> : <Button disabled={saving} variant={action === "delete" ? "destructive" : "default"} onClick={save}>{saving ? "Salvando…" : action === "delete" ? "Confirmar exclusão" : "Salvar alterações"}</Button>}</DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
   );
-};
+}

@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { calendarDate } from "@/utils/financeContent";
 
 interface Transaction {
   id: string;
@@ -28,7 +29,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
     <Card>
       <CardHeader>
         <CardTitle>Transações Recentes</CardTitle>
-        <CardDescription>Últimos 7 dias</CardDescription>
+        <CardDescription>Últimos lançamentos registrados</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -52,7 +53,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
                 <span className={`font-medium ${transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'}`}>
                   {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString()}
                 </span>
-                <p className="text-xs text-gray-400">{new Date(transaction.date).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-400">{calendarDate(transaction.date).toLocaleDateString("pt-BR")}</p>
               </div>
             </div>
           ))}

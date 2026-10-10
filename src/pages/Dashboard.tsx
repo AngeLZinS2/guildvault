@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpCircle, ArrowDownCircle, Home, User, DollarSign, AlertTriangle, Plus, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +15,8 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { fetchProperties, Property } from "@/services/propertyService";
+import { MAX_MONEY_AMOUNT } from "@/utils/financeContent";
+import { LosSantosScene } from "@/components/LosSantosScene";
 
 // Types for data
 type Member = {
@@ -53,20 +56,41 @@ type Activity = {
 }
 
 // Form schema for goal creation
+const validDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+const goalStatus = (goal: Goal) => goal.current_amount >= goal.target_amount
+  ? 'Concluída'
+  : validDate(goal.end_date.slice(0, 10)) && goal.end_date.slice(0, 10) < new Date().toLocaleDateString('sv-SE')
+    ? 'Vencida' : 'Em andamento';
 const goalFormSchema = z.object({
-  title: z.string().min(2, { message: 'Título deve ter pelo menos 2 caracteres' }),
-  targetAmount: z.number().min(1, { message: 'Valor precisa ser maior que 0' }),
-  endDate: z.string().min(1, { message: 'Data final é obrigatória' }),
+  title: z.string().trim().min(2, { message: 'Título deve ter pelo menos 2 caracteres' }),
+  targetAmount: z.number().finite().positive({ message: 'Valor precisa ser maior que 0' }).max(MAX_MONEY_AMOUNT, 'Limite: $1.000.000.000'),
+  currentAmount: z.number().finite().min(0, { message: 'Progresso não pode ser negativo' }).max(MAX_MONEY_AMOUNT, 'Limite: $1.000.000.000'),
+  endDate: z.string().refine(validDate, { message: 'Informe uma data real no formato AAAA-MM-DD' }),
 });
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  const canMutate = isAdmin && !adminLoading;
+  const mutationLock = useRef(false);
+  const loadLock = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [deleteGoal, setDeleteGoal] = useState<Goal | null>(null);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [pendingTransactions, setPendingTransactions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [memberCount, setMemberCount] = useState({ total: 0, active: 0, inactive: 0 });
   const [propertiesData, setPropertiesData] = useState({ total: 0, farms: 0, hqs: 0, warehouses: 0 });
   const [financialData, setFinancialData] = useState({ balance: 0, monthlyGrowth: 0 });
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<{ name: string; deposits: number; withdrawals: number }[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [latestTransactions, setLatestTransactions] = useState<Finance[]>([]);
@@ -79,31 +103,21 @@ export default function Dashboard() {
     defaultValues: {
       title: '',
       targetAmount: 100000,
+      currentAmount: 0,
       endDate: new Date().toISOString().split('T')[0],
     },
   });
 
-  useEffect(() => {
-    // Ensure user is logged in
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/');
-        return;
-      }
-      
-      loadDashboardData();
-    };
-    
-    checkAuth();
-  }, [navigate]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
+    if (loadLock.current) return;
+    loadLock.current = true;
+    setLoadError(null);
     setLoading(true);
     
     try {
       // Load members data
-      const { data: members } = await supabase.from('profiles').select('*');
+      const { data: members, error: membersError } = await supabase.from('profiles').select('*');
+      if (membersError) throw membersError;
       if (members) {
         const active = members.filter(m => m.status === 'active').length;
         setMemberCount({
@@ -115,6 +129,7 @@ export default function Dashboard() {
       
       // Load properties data
       const propertiesResult = await fetchProperties();
+      if (!propertiesResult.success) throw propertiesResult.error;
       if (propertiesResult.success) {
         const propertiesList = propertiesResult.data;
         setProperties(propertiesList);
@@ -133,8 +148,11 @@ export default function Dashboard() {
       }
       
       // Load financial data
-      const { data: finances } = await supabase.from('finances').select('*');
+      const { data: finances, error: financesError } = await supabase.from('finances').select('*');
+      if (financesError) throw financesError;
       if (finances) {
+        setPendingTransactions(finances.filter((finance: Finance) => finance.verified === false).length);
+        setLatestTransactions([]);
         // Calculate total balance
         const balance = finances.reduce((total, finance) => {
           if (finance.type === 'deposit') return total + finance.amount;
@@ -159,6 +177,7 @@ export default function Dashboard() {
         // Create chart data
         const last6Months = Array.from({ length: 6 }, (_, i) => {
           const date = new Date();
+          date.setDate(1);
           date.setMonth(date.getMonth() - i);
           return {
             month: date.toLocaleString('default', { month: 'short' }),
@@ -200,7 +219,8 @@ export default function Dashboard() {
       }
       
       // Load goals
-      const { data: goalsData } = await supabase.from('goals').select('*');
+      const { data: goalsData, error: goalsError } = await supabase.from('goals').select('*');
+      if (goalsError) throw goalsError;
       if (goalsData) {
         setGoals(goalsData as Goal[]);
       }
@@ -242,6 +262,7 @@ export default function Dashboard() {
       }
       
     } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Não foi possível carregar os dados');
       console.error("Error loading dashboard data:", error);
       toast({
         title: "Erro",
@@ -249,46 +270,109 @@ export default function Dashboard() {
         variant: "destructive"
       });
     } finally {
+      loadLock.current = false;
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/');
+        return;
+      }
+      await loadDashboardData();
+    };
+    void checkAuth();
+  }, [navigate, loadDashboardData]);
 
   const createGoal = async (data: z.infer<typeof goalFormSchema>) => {
+    if (!canMutate || mutationLock.current) return;
+    mutationLock.current = true;
+    setSaving(true);
+    setMutationError(null);
     try {
-      const { error } = await supabase.from('goals').insert({
+      const payload = {
         title: data.title,
         target_amount: data.targetAmount,
-        current_amount: 0,
+        current_amount: data.currentAmount,
         end_date: data.endDate
-      });
+      };
+      const { error } = editingGoal
+        ? await supabase.from('goals').update(payload).eq('id', editingGoal.id)
+        : await supabase.from('goals').insert(payload);
       
       if (error) throw error;
       
       toast({
-        title: "Meta criada",
-        description: "A meta foi criada com sucesso"
+        title: editingGoal ? "Meta atualizada" : "Meta criada",
+        description: "A meta foi salva com sucesso"
       });
       
       setShowGoalForm(false);
       goalForm.reset();
       loadDashboardData();
       
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível salvar a meta';
+      setMutationError(message);
       toast({
-        title: "Erro ao criar meta",
-        description: error.message,
+        title: "Erro ao salvar meta",
+        description: message,
         variant: "destructive"
       });
+    } finally {
+      mutationLock.current = false;
+      setSaving(false);
     }
   };
 
-  const currentGoal = goals.length > 0 ? goals[0] : null;
-  const goalProgress = currentGoal ? Math.round((currentGoal.current_amount / currentGoal.target_amount) * 100) : 0;
+  const openGoalForm = (goal: Goal | null = null) => {
+    if (!canMutate || mutationLock.current) return;
+    setEditingGoal(goal);
+    setMutationError(null);
+    goalForm.reset(goal ? {
+      title: goal.title, targetAmount: goal.target_amount, currentAmount: goal.current_amount,
+      endDate: goal.end_date.slice(0, 10)
+    } : { title: '', targetAmount: 100000, currentAmount: 0, endDate: new Date().toLocaleDateString('sv-SE') });
+    setShowGoalForm(true);
+  };
+  const confirmDelete = async () => {
+    if (!canMutate || !deleteGoal || mutationLock.current) return;
+    mutationLock.current = true;
+    setSaving(true);
+    setMutationError(null);
+    try {
+      const { error } = await supabase.from('goals').delete().eq('id', deleteGoal.id);
+      if (error) throw error;
+      setGoals(previous => previous.filter(goal => goal.id !== deleteGoal.id));
+      setDeleteGoal(null);
+      toast({ title: 'Meta excluída' });
+    } catch (error) {
+      setMutationError(error instanceof Error ? error.message : 'Não foi possível excluir a meta');
+    } finally {
+      mutationLock.current = false;
+      setSaving(false);
+    }
+  };
+  const currentGoal = goals.find(goal => goal.id === selectedGoalId) ?? goals[0] ?? null;
+  const goalProgress = currentGoal && currentGoal.target_amount > 0 ? Math.min(100, Math.max(0, Math.round((currentGoal.current_amount / currentGoal.target_amount) * 100))) : 0;
+  const overdueGoals = goals.filter(goal => goalStatus(goal) === 'Vencida');
+  const emptyStock = properties.filter(property => (property.items ?? []).some(item => item.quantity === 0));
 
   return (
-    <div className="container mx-auto px-4 pt-20 pb-10">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div className="mx-auto max-w-[1400px] motion-enter">
+      <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div><h1 className="text-3xl text-white sm:text-4xl">Central da crew</h1><p className="mt-1 text-sm text-muted-foreground">Los Santos está lá fora. O controle está aqui.</p></div>
+        <Button variant="outline" disabled={loading || saving} onClick={() => void loadDashboardData()}>{loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Atualizar dados</Button>
+      </header>
+      <section className="operation-banner" aria-label="Explore sua operação">
+        <div className="operation-copy"><h2>Sua próxima<br />grande jogada.</h2><p>Confira o caixa, reúna a equipe e escolha seu próximo objetivo. Uma cidade inteira de possibilidades.</p><div className="operation-shortcuts"><button type="button" onClick={() => navigate('/finances')}><DollarSign size={17} /> Abrir o caixa</button>{canMutate && <button type="button" disabled={saving} onClick={() => openGoalForm()}><Plus size={17} /> Nova meta</button>}<button type="button" onClick={() => navigate('/members')}><User size={17} /> Minha crew</button></div></div>
+        <LosSantosScene compact onNavigate={navigate} />
+      </section>
       
+      {loadError && <p role="alert" className="mb-4 text-red-400">Falha ao atualizar: {loadError}. Os dados abaixo podem estar incompletos ou desatualizados. Tente atualizar novamente.</p>}
       {loading ? (
         <div className="grid gap-4 mb-8">
           {Array.from({ length: 4 }).map((_, index) => (
@@ -300,15 +384,15 @@ export default function Dashboard() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="guild-card">
+          <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card className="guild-card md:col-span-2 xl:col-span-1">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Saldo Total</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
                   <DollarSign className="h-6 w-6 text-guild-secondary mr-2" />
-                  <span className="text-2xl font-bold">${financialData.balance.toLocaleString()}</span>
+                  <span className="metric-value">${financialData.balance.toLocaleString()}</span>
                 </div>
                 <p className={`text-xs ${financialData.monthlyGrowth >= 0 ? 'text-green-400' : 'text-red-400'} mt-1`}>
                   {financialData.monthlyGrowth >= 0 ? '+' : ''}{financialData.monthlyGrowth.toLocaleString()} neste mês
@@ -323,7 +407,7 @@ export default function Dashboard() {
               <CardContent>
                 <div className="flex items-center">
                   <Home className="h-6 w-6 text-guild-primary mr-2" />
-                  <span className="text-2xl font-bold">{propertiesData.total}</span>
+                  <span className="metric-value">{propertiesData.total}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {propertiesData.farms} Pequena, {propertiesData.hqs} Media, {propertiesData.warehouses} Grande
@@ -338,7 +422,7 @@ export default function Dashboard() {
               <CardContent>
                 <div className="flex items-center">
                   <User className="h-6 w-6 text-blue-400 mr-2" />
-                  <span className="text-2xl font-bold">{memberCount.total}</span>
+                  <span className="metric-value">{memberCount.total}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {memberCount.active} Ativos, {memberCount.inactive} Inativos
@@ -353,7 +437,9 @@ export default function Dashboard() {
                   <Button 
                     variant="ghost" 
                     className="h-6 w-6 p-0"
-                    onClick={() => setShowGoalForm(true)}
+                    disabled={!canMutate || saving}
+                    aria-label="Criar meta"
+                    onClick={() => openGoalForm()}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -362,6 +448,7 @@ export default function Dashboard() {
               <CardContent>
                 {currentGoal ? (
                   <>
+                    <p className="text-xs text-gray-400 mb-2">{goalStatus(currentGoal)}</p>
                     <div className="flex items-center mb-2">
                       <span className="text-lg font-bold">${currentGoal.current_amount.toLocaleString()} / ${currentGoal.target_amount.toLocaleString()}</span>
                     </div>
@@ -383,7 +470,8 @@ export default function Dashboard() {
                     <Button
                       variant="link"
                       className="text-guild-primary p-0 h-auto text-xs"
-                      onClick={() => setShowGoalForm(true)}
+                      disabled={!canMutate || saving}
+                      onClick={() => openGoalForm()}
                     >
                       Criar nova meta
                     </Button>
@@ -392,6 +480,15 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+          {!loadError && <Card className="guild-card mb-6">
+            <CardHeader><CardTitle>Pendências acionáveis</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {pendingTransactions > 0 && <Button variant="link" onClick={() => navigate('/finances?status=pending')}>{pendingTransactions} transações não verificadas — revisar</Button>}
+              {emptyStock.length > 0 && <Button variant="link" onClick={() => navigate('/properties?stock=empty')}>{emptyStock.length} propriedades com itens de estoque zerado — conferir</Button>}
+              {overdueGoals.map(goal => <div key={goal.id}><Button variant="link" onClick={() => { setSelectedGoalId(goal.id); document.getElementById('dashboard-goals')?.scrollIntoView({ behavior: 'smooth' }); }}>Meta vencida: {goal.title} — conferir meta</Button></div>)}
+              {pendingTransactions === 0 && emptyStock.length === 0 && overdueGoals.length === 0 && <p className="text-sm text-gray-400">Nenhuma pendência encontrada nos dados carregados.</p>}
+            </CardContent>
+          </Card>}
           
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -413,12 +510,12 @@ export default function Dashboard() {
                           <XAxis dataKey="name" stroke="#8b9cb1" />
                           <YAxis stroke="#8b9cb1" />
                           <Tooltip 
-                            contentStyle={{ backgroundColor: '#1e1f2c', borderColor: '#8b5cf6' }}
+                          contentStyle={{ backgroundColor: '#1e1c35', borderColor: '#7c3aed', borderRadius: '8px' }}
                             formatter={(value) => [`$${Number(value).toLocaleString()}`, undefined]}
                           />
                           <Legend />
-                          <Bar dataKey="deposits" name="Entradas" fill="#8b5cf6" />
-                          <Bar dataKey="withdrawals" name="Saídas" fill="#ff6b35" />
+                          <Bar dataKey="deposits" name="Entradas" fill="#9ce7cd" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="withdrawals" name="Saídas" fill="#ff9970" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -439,7 +536,7 @@ export default function Dashboard() {
                   {activities.length > 0 ? (
                     <div className="space-y-4">
                       {activities.map((activity, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-2 rounded-md hover:bg-guild-dark/50">
+                        <div key={index} className="data-row flex items-start space-x-3 p-3">
                           <div className="bg-guild-primary/20 rounded-full p-2">
                             <User className="h-5 w-5 text-guild-primary" />
                           </div>
@@ -464,7 +561,7 @@ export default function Dashboard() {
             
             <div>
               {goals.length > 0 && (
-                <Card className="guild-card">
+                <Card className="guild-card" id="dashboard-goals">
                   <CardHeader>
                     <CardTitle>Metas</CardTitle>
                     <CardDescription>Objetivos financeiros</CardDescription>
@@ -472,7 +569,7 @@ export default function Dashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       {goals.map(goal => {
-                        const progress = Math.round((goal.current_amount / goal.target_amount) * 100);
+                        const progress = goal.target_amount > 0 ? Math.min(100, Math.max(0, Math.round((goal.current_amount / goal.target_amount) * 100))) : 0;
                         const isUrgent = new Date(goal.end_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
                         
                         return (
@@ -497,7 +594,15 @@ export default function Dashboard() {
                             <Progress value={progress} className="h-2 my-2" />
                             <div className="flex justify-between mt-1">
                               <p className="text-sm">${goal.current_amount.toLocaleString()} / ${goal.target_amount.toLocaleString()}</p>
-                              <p className="text-xs text-gray-400">Vence: {new Date(goal.end_date).toLocaleDateString()}</p>
+                              <p className="text-xs text-gray-400">Vence: {new Date(`${goal.end_date.slice(0, 10)}T00:00:00`).toLocaleDateString()}</p>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">{goalStatus(goal)}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Button variant="outline" size="sm" aria-pressed={currentGoal?.id === goal.id} onClick={() => setSelectedGoalId(goal.id)}>{currentGoal?.id === goal.id ? 'Meta atual' : 'Selecionar'}</Button>
+                              {canMutate && <>
+                                <Button variant="outline" size="sm" disabled={saving} onClick={() => openGoalForm(goal)}>Editar / progresso</Button>
+                                <Button variant="outline" size="sm" disabled={saving} onClick={() => { setMutationError(null); setDeleteGoal(goal); }}>Excluir</Button>
+                              </>}
                             </div>
                           </div>
                         );
@@ -505,7 +610,8 @@ export default function Dashboard() {
                       <Button 
                         variant="outline" 
                         className="w-full border-guild-primary/30 text-white"
-                        onClick={() => setShowGoalForm(true)}
+                        disabled={!canMutate || saving}
+                        onClick={() => openGoalForm()}
                       >
                         <Plus className="h-4 w-4 mr-2" /> Nova Meta
                       </Button>
@@ -517,7 +623,7 @@ export default function Dashboard() {
               <Card className="guild-card mt-6">
                 <CardHeader>
                   <CardTitle>Transações Recentes</CardTitle>
-                  <CardDescription>Últimas 24 horas</CardDescription>
+                  <CardDescription>Últimas transações registradas</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {latestTransactions.length > 0 ? (
@@ -525,7 +631,7 @@ export default function Dashboard() {
                       {latestTransactions.map((transaction) => (
                         <div 
                           key={transaction.id} 
-                          className={`flex justify-between items-center p-2 rounded-md bg-${transaction.type === 'deposit' ? 'green' : 'red'}-500/10`}
+                            className={`data-row flex items-center justify-between p-3 ${transaction.type === 'deposit' ? 'bg-emerald-500/5' : 'bg-rose-500/5'}`}
                         >
                           <div className="flex items-center">
                             {transaction.type === 'deposit' ? (
@@ -565,10 +671,10 @@ export default function Dashboard() {
       )}
       
       {/* Goal Creation Dialog */}
-      <Dialog open={showGoalForm} onOpenChange={setShowGoalForm}>
+      <Dialog open={showGoalForm} onOpenChange={open => { if (!mutationLock.current) setShowGoalForm(open); }}>
         <DialogContent className="bg-guild-surface border-guild-primary/30 text-white">
           <DialogHeader>
-            <DialogTitle>Criar Nova Meta</DialogTitle>
+            <DialogTitle>{editingGoal ? 'Editar Meta' : 'Criar Nova Meta'}</DialogTitle>
             <DialogDescription className="text-gray-300">
               Defina uma nova meta financeira para sua guilda
             </DialogDescription>
@@ -576,6 +682,8 @@ export default function Dashboard() {
           
           <Form {...goalForm}>
             <form onSubmit={goalForm.handleSubmit(createGoal)} className="space-y-4">
+              {mutationError && <p role="alert" className="text-red-400">{mutationError}</p>}
+              <fieldset disabled={saving || !canMutate} className="space-y-4">
               <FormField
                 control={goalForm.control}
                 name="title"
@@ -603,6 +711,7 @@ export default function Dashboard() {
                     <FormControl>
                       <Input 
                         type="number"
+                        step="any"
                         className="bg-guild-dark/70 border-guild-primary/30 text-white" 
                         {...field}
                         onChange={e => field.onChange(parseFloat(e.target.value))}
@@ -613,6 +722,17 @@ export default function Dashboard() {
                 )}
               />
               
+              <FormField
+                control={goalForm.control}
+                name="currentAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Progresso atual ($)</FormLabel>
+                    <FormControl><Input type="number" step="any" min="0" {...field} onChange={event => field.onChange(parseFloat(event.target.value))} /></FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={goalForm.control}
                 name="endDate"
@@ -644,11 +764,22 @@ export default function Dashboard() {
                   type="submit" 
                   className="bg-guild-primary hover:bg-guild-primary/80"
                 >
-                  Criar Meta
+                  {saving ? 'Salvando...' : editingGoal ? 'Salvar alterações' : 'Criar Meta'}
                 </Button>
               </DialogFooter>
+              </fieldset>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!deleteGoal} onOpenChange={open => { if (!open && !mutationLock.current) setDeleteGoal(null); }}>
+        <DialogContent className="bg-guild-surface border-guild-primary/30 text-white">
+          <DialogHeader><DialogTitle>Excluir meta?</DialogTitle><DialogDescription>A meta “{deleteGoal?.title}” será excluída permanentemente. Confirme para continuar.</DialogDescription></DialogHeader>
+          {mutationError && <p role="alert" className="text-red-400">{mutationError}</p>}
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => setDeleteGoal(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={saving || !canMutate} onClick={() => void confirmDelete()}>{saving ? 'Excluindo...' : 'Confirmar exclusão'}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

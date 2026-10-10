@@ -13,6 +13,7 @@ import {
 import { FileText, Download } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
 import { DateFilter } from "./DateFilter";
+import { calendarDate, type VerificationFilter } from "@/utils/financeContent";
 
 interface Transaction {
   id: string;
@@ -36,6 +37,9 @@ interface TransactionTableHeaderProps {
   onDateFilterChange: (value: string) => void;
   onCustomDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void;
   filteredTransactions: Transaction[];
+  verificationFilter: VerificationFilter;
+  onVerificationFilterChange: (value: VerificationFilter) => void;
+  onResetFilters: () => void;
 }
 
 export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
@@ -48,10 +52,13 @@ export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
   onDateFilterChange,
   onCustomDateRangeChange,
   filteredTransactions,
+  verificationFilter,
+  onVerificationFilterChange,
+  onResetFilters,
 }) => {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+    return calendarDate(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -84,6 +91,7 @@ export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
         <div className="relative w-full md:w-auto md:flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <Input
+            aria-label="Pesquisar transações"
             placeholder="Pesquisar por membro ou descrição..."
             className="pl-10"
             value={searchTerm}
@@ -122,12 +130,22 @@ export const TransactionTableHeader: React.FC<TransactionTableHeaderProps> = ({
           </SelectContent>
         </Select>
 
+        <Select value={verificationFilter} onValueChange={onVerificationFilterChange}>
+          <SelectTrigger aria-label="Filtrar por verificação" className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="pending">Pendentes</SelectItem>
+            <SelectItem value="verified">Verificadas</SelectItem>
+          </SelectContent>
+        </Select>
+
         <DateFilter
           dateFilter={dateFilter}
           onDateFilterChange={onDateFilterChange}
           customDateRange={customDateRange}
           onCustomDateRangeChange={onCustomDateRangeChange}
         />
+        <Button variant="ghost" onClick={onResetFilters}>Limpar filtros</Button>
       </div>
     </div>
   );

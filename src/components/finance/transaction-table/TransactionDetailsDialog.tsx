@@ -15,6 +15,7 @@ interface Transaction {
   verified: boolean;
   proof_url?: string | null;
   verifier_name?: string;
+  verification_notes?: string | null;
 }
 
 interface TransactionDetailsDialogProps {
@@ -23,6 +24,7 @@ interface TransactionDetailsDialogProps {
   setDetailsOpen: (open: boolean) => void;
   handleVerificationOpen: (transaction: Transaction) => void;
   formatDate: (date: string) => string;
+  canVerify?: boolean;
 }
 
 export const TransactionDetailsDialog: React.FC<TransactionDetailsDialogProps> = ({
@@ -31,6 +33,7 @@ export const TransactionDetailsDialog: React.FC<TransactionDetailsDialogProps> =
   setDetailsOpen,
   handleVerificationOpen,
   formatDate,
+  canVerify = false,
 }) => {
   if (!selectedTransaction) return null;
 
@@ -105,6 +108,7 @@ export const TransactionDetailsDialog: React.FC<TransactionDetailsDialogProps> =
               <p className="font-medium">{selectedTransaction.verifier_name}</p>
             </div>
           )}
+          {selectedTransaction.verification_notes && <div><p className="text-sm text-gray-400">Observações da verificação</p><p className="break-words text-sm">{selectedTransaction.verification_notes}</p></div>}
           
           <div>
             <p className="text-sm text-gray-400">ID da Transação</p>
@@ -128,7 +132,7 @@ export const TransactionDetailsDialog: React.FC<TransactionDetailsDialogProps> =
           
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" size="sm" onClick={() => setDetailsOpen(false)}>Fechar</Button>
-            <Button 
+            {canVerify && <Button
               variant={selectedTransaction.verified ? "destructive" : "default"}
               size="sm"
               onClick={() => {
@@ -137,7 +141,7 @@ export const TransactionDetailsDialog: React.FC<TransactionDetailsDialogProps> =
               }}
             >
               {selectedTransaction.verified ? "Reverter verificação" : "Verificar"}
-            </Button>
+            </Button>}
           </div>
         </div>
       </DialogContent>
